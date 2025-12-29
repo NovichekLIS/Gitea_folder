@@ -65,6 +65,15 @@
 					{{if not $.DisableStars}}
 					{{template "repo/star_unstar" $}}
 					{{end}}
+					<!-- Кнопка скачивания текущей папки -->
+					{{if and (not .IsEmpty) ($.Permission.CanRead ctx.Consts.RepoUnitTypeCode) $.TreePath}}
+						<a class="ui compact small basic button" 
+						   href="{{$.RepoLink}}/download/folder/{{$.TreePath}}" 
+						   data-tooltip-content="{{ctx.Locale.Tr "repo.download_folder"}}">
+							{{svg "octicon-cloud-download" 16}}
+							<span class="text not-mobile">{{ctx.Locale.Tr "repo.download_folder"}}</span>
+						</a>
+					{{end}}
 					{{if and (not .IsEmpty) ($.Permission.CanRead ctx.Consts.RepoUnitTypeCode)}}
 						<div class="ui labeled button
 							{{if or (not $.IsSigned) (and (not $.CanSignedUserFork) (not $.UserAndOrgForks))}}
@@ -115,14 +124,6 @@
 							</div>
 						</div>
 					{{end}}
-					{{if and (not (or .Repository.IsBeingCreated .Repository.IsBroken)) (.Permission.CanRead ctx.Consts.RepoUnitTypeCode) (.TreePath) (not .Repository.IsEmpty)}}
-   					<a class="ui compact small basic button" 
-       				href="{{.RepoLink}}/download/folder/{{.TreePath}}" 
-      				data-tooltip-content="{{ctx.Locale.Tr "repo.download_folder"}}">
-       				{{svg "octicon-cloud-download"}} 
-        			<span class="text not-mobile">{{ctx.Locale.Tr "repo.download_folder"}}</span>
-    				</a>
-				{{end}}
 				</div>
 			{{end}}
 		</div>
