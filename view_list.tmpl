@@ -67,7 +67,7 @@
             {{if $commit}}{{DateUtils.TimeSince $commit.Committer.When}}{{end}}
         </div>
         
-        <!-- КНОПКА СКАЧИВАНИЯ ДЛЯ ПАПОК И ФАЙЛОВ -->
+        <!-- ДОБАВЛЯЕМ КНОПКУ СКАЧИВАНИЯ ДЛЯ ВСЕХ ЭЛЕМЕНТОВ -->
         <div class="repo-file-cell download">
             {{if $entry.IsDir}}
                 {{$folderPath := ""}}
@@ -83,11 +83,12 @@
                     📁
                 </a>
             {{else}}
-                <!-- Для файлов можно оставить пусто или добавить иконку скачивания файла -->
+                <!-- Для файлов оставляем пусто или показываем другую иконку -->
                 <a class="ui tiny button" 
                    href="{{$.TreeLink}}/{{PathEscapeSegments $entry.Name}}?download=true" 
                    title="{{ctx.Locale.Tr "repo.download_file"}}"
-                   data-tooltip="{{ctx.Locale.Tr "repo.download_file"}}">
+                   data-tooltip="{{ctx.Locale.Tr "repo.download_file"}}"
+                   style="background: transparent; border: none; color: var(--color-text-light);">
                     ⬇️
                 </a>
             {{end}}
