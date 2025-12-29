@@ -2101,7 +2101,7 @@ tbody.commit-list {
     padding: 0;
 }
 
-/* Стили для кнопки скачивания */
+/* Стили для кнопки скачивания папки */
 .repo-file-cell.download a.ui.tiny.button {
     display: inline-flex;
     align-items: center;
@@ -2115,6 +2115,10 @@ tbody.commit-list {
     border: 1px solid var(--color-border);
     color: var(--color-text-secondary);
     transition: all 0.2s ease;
+    font-size: 18px;
+    line-height: 1;
+    white-space: nowrap;
+    text-decoration: none;
 }
 
 .repo-file-cell.download a.ui.tiny.button:hover {
@@ -2228,65 +2232,6 @@ tbody.commit-list {
     opacity: 0.6;
 }
 
-/* Адаптивность для планшетов */
-@media (max-width: 1024px) {
-    #repo-files-table {
-        grid-template-columns: minmax(150px, 1fr) minmax(200px, 1fr) minmax(80px, auto) minmax(40px, auto);
-        gap: 10px 6px;
-    }
-}
-
-/* Адаптивность для мобильных устройств */
-@media (max-width: 768px) {
-    #repo-files-table {
-        grid-template-columns: 1fr auto auto;
-        gap: 8px 4px;
-    }
-    
-    .repo-file-cell.age {
-        display: none;
-    }
-    
-    .repo-file-cell.download {
-        width: 40px;
-    }
-    
-    .repo-file-cell.download a.ui.tiny.button {
-        width: 32px;
-        height: 32px;
-    }
-    
-    .repo-file-cell.download a.ui.tiny.button svg {
-        width: 16px;
-        height: 16px;
-    }
-    
-    .repo-file-cell.message {
-        font-size: 0.85em;
-    }
-}
-
-/* Адаптивность для очень маленьких экранов */
-@media (max-width: 480px) {
-    #repo-files-table {
-        grid-template-columns: 1fr auto;
-        gap: 6px 4px;
-    }
-    
-    .repo-file-cell.message {
-        display: none;
-    }
-    
-    .repo-file-cell.download {
-        width: 36px;
-    }
-    
-    .repo-file-cell.download a.ui.tiny.button {
-        width: 28px;
-        height: 28px;
-    }
-}
-
 /* Стили для субмодулей */
 .repo-file-cell.name .text.primary {
     color: var(--color-primary);
@@ -2304,6 +2249,63 @@ tbody.commit-list {
     display: none;
 }
 
+/* Адаптивность для планшетов */
+@media (max-width: 1024px) {
+    #repo-files-table {
+        grid-template-columns: minmax(150px, 1fr) minmax(200px, 1fr) minmax(80px, auto) minmax(40px, auto);
+        gap: 10px 6px;
+    }
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+    #repo-files-table {
+        grid-template-columns: 1fr auto auto !important;
+        gap: 8px 4px;
+    }
+    
+    .repo-file-cell.age {
+        display: none !important;
+    }
+    
+    .repo-file-cell.download {
+        width: 40px;
+    }
+    
+    .repo-file-cell.download a.ui.tiny.button {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+    }
+    
+    .repo-file-cell.message {
+        font-size: 0.85em;
+        max-width: 150px;
+    }
+}
+
+/* Адаптивность для очень маленьких экранов */
+@media (max-width: 480px) {
+    #repo-files-table {
+        grid-template-columns: 1fr auto !important;
+        gap: 6px 4px;
+    }
+    
+    .repo-file-cell.message {
+        display: none !important;
+    }
+    
+    .repo-file-cell.download {
+        width: 36px;
+    }
+    
+    .repo-file-cell.download a.ui.tiny.button {
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+    }
+}
+
 /* Улучшаем отображение на темной теме */
 @media (prefers-color-scheme: dark) {
     .repo-file-cell.download a.ui.tiny.button {
@@ -2316,86 +2318,6 @@ tbody.commit-list {
         background: var(--color-primary-dark);
         border-color: var(--color-primary-dark);
         color: white;
-    }
-    #repo-files-table {
-    display: grid !important;
-    grid-template-columns: minmax(200px, 1fr) minmax(200px, 1fr) auto auto !important;
-    gap: 8px !important;
-    align-items: center !important;
-}
-
-/* Исправление для элементов таблицы */
-.repo-file-item {
-    display: contents !important;
-}
-
-/* Стили для ячеек */
-.repo-file-cell {
-    padding: 8px 4px !important;
-    display: flex !important;
-    align-items: center !important;
-}
-
-.repo-file-cell.name {
-    min-width: 0 !important;
-    overflow: hidden !important;
-}
-
-.repo-file-cell.message {
-    min-width: 0 !important;
-    overflow: hidden !important;
-}
-
-.repo-file-cell.age {
-    white-space: nowrap !important;
-    text-align: right !important;
-}
-
-/* Стили для кнопки скачивания */
-.repo-file-cell.download {
-    width: 40px !important;
-    text-align: center !important;
-}
-
-.repo-file-cell.download a.ui.tiny.button {
-    width: 32px !important;
-    height: 32px !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-
-.repo-file-cell.download a.ui.tiny.button svg {
-    width: 16px !important;
-    height: 16px !important;
-    margin: 0 !important;
-}
-
-/* Строки-заголовки (занимают всю ширину) */
-.repo-file-line {
-    grid-column: 1 / -1 !important;
-}
-
-/* Адаптивность для мобильных */
-@media (max-width: 768px) {
-    #repo-files-table {
-        grid-template-columns: 1fr auto auto !important;
-    }
-    
-    .repo-file-cell.age {
-        display: none !important;
-    }
-}
-
-@media (max-width: 480px) {
-    #repo-files-table {
-        grid-template-columns: 1fr auto !important;
-    }
-    
-    .repo-file-cell.message {
-        display: none !important;
     }
 }
 }
