@@ -40,12 +40,7 @@
 							{{end}}
 						</a>
 						<!-- Кнопка скачивания папки -->
-						<a class="flex-text-inline muted" 
-						   href="{{$.RepoLink}}/download/folder/{{if $.TreePath}}{{$.TreePath}}/{{end}}{{$entry.Name}}" 
-						   data-tooltip-content="{{ctx.Locale.Tr "repo.download_folder"}}"
-						   title="{{ctx.Locale.Tr "repo.download_folder"}}">
-							{{svg "octicon-cloud-download" 12}}
-						</a>
+						<a class="flex-text-inline muted" href="{{$.RepoLink}}/download/folder/{{if $.TreePath}}{{$.TreePath}}/{{end}}{{$entry.Name}}" data-tooltip-content="{{ctx.Locale.Tr "repo.download_folder"}}" title="{{ctx.Locale.Tr "repo.download_folder"}}">{{svg "octicon-cloud-download" 12}}</a>
 					{{else}}
 						<a class="entry-name" href="{{$.TreeLink}}/{{PathEscapeSegments $entry.Name}}" title="{{$entry.Name}}">{{$entry.Name}}</a>
 						{{if $entry.IsLink}}
