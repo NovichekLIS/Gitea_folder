@@ -175,9 +175,24 @@ func DownloadFolder(ctx *context.Context) {
         return
     }
 
-    // Get the commit
-    commit := ctx.Repo.Commit
+    // Get the commit - проверяем, что commit существует
+    if ctx.Repo.Commit == nil {
+        // Попробуем получить коммит из репозитория
+        var err error
+        ctx.Repo.Commit, err = ctx.Repo.GitRepo.GetBranchCommit(ctx.Repo.Repository.DefaultBranch)
+        if err != nil {
+            log.Error("Failed to get commit: %v", err)
+            ctx.ServerError("GetCommit", err)
+            return
+        }
+    }
     
+    commit := ctx.Repo.Commit
+    if commit == nil {
+        ctx.NotFound(nil)
+        return
+    }
+
     // Verify it's a directory
     entry, err := commit.GetTreeEntryByPath(treePath)
     if err != nil {
