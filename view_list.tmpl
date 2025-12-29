@@ -77,10 +77,12 @@
                     {{$folderPath = $entry.Name}}
                 {{end}}
                 <a class="ui tiny button" 
-                   href="{{$.RepoLink}}/download/folder/{{PathEscapeSegments $folderPath}}?ref={{$.BranchName}}" 
-                   title="{{ctx.Locale.Tr "repo.download_folder"}}"
-                   data-tooltip="{{ctx.Locale.Tr "repo.download_folder"}}">
-                    {{svg "octicon-cloud-download" 16}}
+                        href="{{$.RepoLink}}/download/folder/{{PathEscapeSegments $folderPath}}?ref={{$.BranchName}}" 
+                        title="{{ctx.Locale.Tr "repo.download_folder"}}"
+                        data-tooltip="{{ctx.Locale.Tr "repo.download_folder"}}">
+                        <svg class="svg octicon octicon-cloud-download" width="16" height="16">
+                                <use xlink:href="#octicon-cloud-download"></use>
+                        </svg>
                 </a>
             {{end}}
         </div>
