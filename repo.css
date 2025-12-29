@@ -2038,103 +2038,174 @@ tbody.commit-list {
   height: 4em;
 }
 
-/* ========== СТИЛИ ДЛЯ ТАБЛИЦЫ ФАЙЛОВ (GRID LAYOUT) ========== */
+/* ========== СТИЛИ ДЛЯ ТАБЛИЦЫ ФАЙЛОВ С 4 КОЛОНКАМИ ========== */
 
-/* Стили для таблицы файлов в grid layout */
+/* Основной grid контейнер с 4 колонками */
 #repo-files-table {
     display: grid;
-    grid-template-columns: minmax(200px, 1fr) minmax(200px, 1fr) auto auto;
-    gap: 8px;
+    grid-template-columns: minmax(200px, 1fr) minmax(250px, 1.5fr) minmax(100px, auto) minmax(50px, auto);
+    gap: 12px 8px;
     align-items: center;
-    margin-bottom: 16px;
+    margin: 16px 0;
+    padding: 8px 0;
 }
 
+/* Элементы файлов - используют содержимое родительского grid */
 .repo-file-item {
-    display: contents; /* Используем содержимое grid родителя */
+    display: contents;
 }
 
+/* Общие стили для ячеек */
 .repo-file-cell {
     padding: 8px 4px;
-    min-height: 32px;
+    min-height: 36px;
     display: flex;
     align-items: center;
+    overflow: hidden;
 }
 
+/* Первая колонка - имя файла */
 .repo-file-cell.name {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-weight: 500;
 }
 
+/* Вторая колонка - сообщение коммита */
 .repo-file-cell.message {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: var(--color-text-light);
+    font-size: 0.95em;
 }
 
+/* Третья колонка - возраст */
 .repo-file-cell.age {
     white-space: nowrap;
     color: var(--color-text-light-2);
     font-size: 0.9em;
+    text-align: right;
+    justify-content: flex-end;
+    padding-right: 8px;
 }
 
+/* Четвертая колонка - кнопка скачивания */
 .repo-file-cell.download {
-    width: 40px;
+    width: 50px;
     text-align: center;
+    justify-content: center;
+    padding: 0;
 }
 
+/* Стили для кнопки скачивания */
 .repo-file-cell.download a.ui.tiny.button {
-    padding: 4px 8px !important;
-    margin: 0 !important;
-    min-height: 28px !important;
-    height: 28px !important;
-    line-height: 1 !important;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: var(--color-text-secondary);
+    width: 36px;
+    height: 36px;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 6px;
     background: var(--color-bg-secondary);
     border: 1px solid var(--color-border);
-    border-radius: 6px;
+    color: var(--color-text-secondary);
     transition: all 0.2s ease;
 }
 
 .repo-file-cell.download a.ui.tiny.button:hover {
-    color: var(--color-primary);
-    background: var(--color-bg-primary);
+    background: var(--color-primary);
     border-color: var(--color-primary);
-    text-decoration: none;
+    color: white;
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .repo-file-cell.download a.ui.tiny.button svg {
+    width: 18px;
+    height: 18px;
     margin: 0 !important;
-    width: 16px;
-    height: 16px;
 }
 
+/* Строки-заголовки (занимают все 4 колонки) */
 .repo-file-line {
-    grid-column: 1 / -1; /* Занимает все колонки */
-    padding: 8px 0;
-    border-bottom: 1px solid var(--color-secondary);
-    margin-bottom: 8px;
+    grid-column: 1 / -1;
+    padding: 12px 4px;
+    margin: 8px 0;
 }
 
+/* Стили для заголовка с последним коммитом */
 .repo-file-line.repo-file-last-commit {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    background: var(--color-box-header);
+    border-radius: var(--border-radius);
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--color-secondary);
 }
 
-/* Стили для загрузки */
+/* Стили для родительской ссылки */
+.repo-file-line.parent-link {
+    display: flex;
+    align-items: center;
+    padding: 8px 4px;
+    color: var(--color-text-light-2);
+    text-decoration: none;
+    margin-bottom: 4px;
+}
+
+.repo-file-line.parent-link:hover {
+    color: var(--color-primary);
+    background-color: var(--color-secondary-alpha-20);
+    border-radius: 4px;
+}
+
+/* Стили для иконок файлов */
+.repo-file-cell.name svg {
+    margin-right: 8px;
+    flex-shrink: 0;
+    color: var(--color-text-light-2);
+}
+
+/* Стили для ссылок внутри ячеек */
+.repo-file-cell.name a.entry-name {
+    color: var(--color-text);
+    text-decoration: none;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.repo-file-cell.name a.entry-name:hover {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+/* Стили для символических ссылок */
+.entry-symbol-link {
+    margin-left: 6px;
+    color: var(--color-text-light-2);
+    opacity: 0.7;
+}
+
+.entry-symbol-link:hover {
+    color: var(--color-primary);
+    opacity: 1;
+}
+
+/* Состояние загрузки */
 .loading-icon-2px {
     position: relative;
 }
 
-.loading-icon-2px:after {
+.loading-icon-2px:empty::after {
     content: "";
     position: absolute;
     top: 50%;
@@ -2146,21 +2217,30 @@ tbody.commit-list {
     border-top-color: var(--color-primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    opacity: 0;
-}
-
-.loading-icon-2px:empty:after {
-    opacity: 1;
 }
 
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
 
+/* Состояние "не готово" */
+.repo-file-cell.notready {
+    opacity: 0.6;
+}
+
+/* Адаптивность для планшетов */
+@media (max-width: 1024px) {
+    #repo-files-table {
+        grid-template-columns: minmax(150px, 1fr) minmax(200px, 1fr) minmax(80px, auto) minmax(40px, auto);
+        gap: 10px 6px;
+    }
+}
+
 /* Адаптивность для мобильных устройств */
 @media (max-width: 768px) {
     #repo-files-table {
         grid-template-columns: 1fr auto auto;
+        gap: 8px 4px;
     }
     
     .repo-file-cell.age {
@@ -2168,93 +2248,73 @@ tbody.commit-list {
     }
     
     .repo-file-cell.download {
-        width: 32px;
+        width: 40px;
     }
     
     .repo-file-cell.download a.ui.tiny.button {
-        padding: 2px 4px !important;
-        min-height: 24px !important;
-        height: 24px !important;
-    }
-}
-
-/* Стили для ссылок */
-.repo-file-cell.name a.entry-name {
-    color: var(--color-text);
-    text-decoration: none;
-}
-
-.repo-file-cell.name a.entry-name:hover {
-    color: var(--color-primary);
-    text-decoration: underline;
-}
-
-/* Стили для символических ссылок */
-.entry-symbol-link {
-    margin-left: 4px;
-    color: var(--color-text-light-2);
-}
-
-.entry-symbol-link:hover {
-    color: var(--color-primary);
-}
-
-/* Стили для иконок файлов */
-.repo-file-cell.name svg {
-    margin-right: 4px;
-    flex-shrink: 0;
-}
-
-/* Стили для родительской ссылки */
-.repo-file-line.parent-link {
-    grid-column: 1 / -1;
-    display: flex;
-    align-items: center;
-    padding: 8px 4px;
-    color: var(--color-text-light-2);
-    text-decoration: none;
-}
-
-.repo-file-line.parent-link:hover {
-    color: var(--color-primary);
-    background-color: var(--color-secondary-alpha-20);
-}
-
-/* Стили для заголовка с последним коммитом */
-.repo-file-line.repo-file-last-commit {
-    background-color: var(--color-box-header);
-    padding: 8px 12px;
-    border-radius: var(--border-radius);
-    margin-bottom: 12px;
-}
-
-/* Стили для состояния "notready" */
-.repo-file-cell.notready {
-    opacity: 0.6;
-}
-
-/* Улучшения для мобильных устройств */
-@media (max-width: 480px) {
-    #repo-files-table {
-        gap: 4px;
+        width: 32px;
+        height: 32px;
     }
     
-    .repo-file-cell {
-        padding: 6px 2px;
+    .repo-file-cell.download a.ui.tiny.button svg {
+        width: 16px;
+        height: 16px;
+    }
+    
+    .repo-file-cell.message {
+        font-size: 0.85em;
+    }
+}
+
+/* Адаптивность для очень маленьких экранов */
+@media (max-width: 480px) {
+    #repo-files-table {
+        grid-template-columns: 1fr auto;
+        gap: 6px 4px;
+    }
+    
+    .repo-file-cell.message {
+        display: none;
     }
     
     .repo-file-cell.download {
-        width: 28px;
+        width: 36px;
     }
     
     .repo-file-cell.download a.ui.tiny.button {
-        padding: 1px 2px !important;
-        min-height: 22px !important;
-        height: 22px !important;
+        width: 28px;
+        height: 28px;
     }
 }
 
-/* Стили для пула иконок файлов */
+/* Стили для субмодулей */
+.repo-file-cell.name .text.primary {
+    color: var(--color-primary);
+    font-weight: 500;
+}
+
+/* Стили для разделителя пути в папках */
+.repo-file-cell.name .text.light-2 {
+    color: var(--color-text-light-2);
+    opacity: 0.7;
+}
+
+/* Скрываем пул иконок */
 .FileIconPoolHTML {
-    display: none; /* Скрываем пул иконок, они используются через JS */
+    display: none;
+}
+
+/* Улучшаем отображение на темной теме */
+@media (prefers-color-scheme: dark) {
+    .repo-file-cell.download a.ui.tiny.button {
+        background: var(--color-secondary);
+        border-color: var(--color-border-dark);
+        color: var(--color-text-dark);
+    }
+    
+    .repo-file-cell.download a.ui.tiny.button:hover {
+        background: var(--color-primary-dark);
+        border-color: var(--color-primary-dark);
+        color: white;
+    }
 }
