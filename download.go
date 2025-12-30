@@ -169,12 +169,13 @@ func DownloadByIDOrLFS(ctx *context.Context) {
 
 // DownloadFolder handles the folder download request
 func DownloadFolder(ctx *context.Context) {
-    treePath := ctx.PathParam("*")
-    if len(treePath) == 0 {
-        ctx.NotFound(nil)
-        return
-    }
-
+    // Получаем путь из параметра маршрута
+    treePath := ctx.PathParam("path")
+    
+    // Декодируем путь, если он закодирован
+    treePath = strings.TrimPrefix(treePath, "/")
+    treePath = strings.TrimSuffix(treePath, "/")
+    
     // Get the commit - проверяем, что commit существует
     if ctx.Repo.Commit == nil {
         // Попробуем получить коммит из репозитория
@@ -190,6 +191,28 @@ func DownloadFolder(ctx *context.Context) {
     commit := ctx.Repo.Commit
     if commit == nil {
         ctx.NotFound(nil)
+        return
+    }
+
+    // Если путь пустой, используем корень репозитория
+    if treePath == "" {
+        // Для корневой папки используем имя репозитория
+        folderName := ctx.Repo.Repository.Name
+        archiveName := fmt.Sprintf("%s-%s.zip", folderName, commit.ID.String()[:7])
+        ctx.Resp.Header().Set("Content-Type", "application/zip")
+        ctx.Resp.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, archiveName))
+
+        // Create ZIP archive
+        zipWriter := zip.NewWriter(ctx.Resp)
+        defer zipWriter.Close()
+
+        // Recursively add folder contents to ZIP
+        err := addFolderToZip(zipWriter, commit, "", "")
+        if err != nil {
+            log.Error("Failed to create zip archive: %v", err)
+            ctx.ServerError("CreateZip", err)
+            return
+        }
         return
     }
 
