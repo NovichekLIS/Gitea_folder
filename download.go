@@ -263,27 +263,19 @@ func DownloadFolder(ctx *context.Context) {
         log.Error("GetTreeEntryByPath error for path %q: %v", treePath, err)
         if git.IsErrNotExist(err) {
             log.Info("Path not found: %q", treePath)
-            // Пробуем проверить, может быть это файл, а не папка
-            // Или попробуем посмотреть родительскую директорию
-            parentDir := path.Dir(treePath)
-            fileName := path.Base(treePath)
-            log.Info("Trying parent dir: %q, file: %q", parentDir, fileName)
             
-            if parentDir != "." && parentDir != "/" {
-                // Проверяем родительскую директорию
-                parentEntry, parentErr := commit.GetTreeEntryByPath(parentDir)
-                if parentErr == nil && parentEntry.IsDir() {
-                    log.Info("Parent directory exists: %q", parentDir)
-                    // Пробуем получить файл в этой директории
-                    entries, listErr := parentEntry.GetSubTree().ListEntries()
-                    if listErr == nil {
-                        log.Info("Entries in parent directory:")
-                        for _, e := range entries {
-                            log.Info("  - %s (dir: %v)", e.Name(), e.IsDir())
-                        }
+            // Попробуем перечислить все доступные пути в репозитории для отладки
+            log.Info("Listing available paths in repository for debugging:")
+            rootTree, _ := commit.SubTree("")
+            if rootTree != nil {
+                entries, _ := rootTree.ListEntriesRecursiveFast()
+                if entries != nil {
+                    for _, e := range entries {
+                        log.Info("  - %s (dir: %v)", e.Name(), e.IsDir())
                     }
                 }
             }
+            
             ctx.NotFound(err)
         } else {
             ctx.ServerError("GetTreeEntryByPath", err)
