@@ -172,53 +172,20 @@ func DownloadByIDOrLFS(ctx *context.Context) {
 
 // DownloadFolder handles the folder download request
 func DownloadFolder(ctx *context.Context) {
-    // Добавляем подробное логирование
-    log.Info("=== DownloadFolder called ===")
-    log.Info("Full URL: %s", ctx.Req.URL.String())
-    log.Info("Request path: %s", ctx.Req.URL.Path)
-    log.Info("Repo: %s/%s", ctx.Repo.Repository.OwnerName, ctx.Repo.Repository.Name)
-    
-    // Пробуем получить путь из разных возможных параметров
-    var treePath string
-    if pathParam := ctx.PathParam("path"); pathParam != "" {
-        treePath = pathParam
-        log.Info("Got path from 'path' param: %q", treePath)
-    } else if pathParam := ctx.PathParam("*"); pathParam != "" {
-        treePath = pathParam
-        log.Info("Got path from '*' param: %q", treePath)
-    } else if pathParam := ctx.PathParam("treePath"); pathParam != "" {
-        treePath = pathParam
-        log.Info("Got path from 'treePath' param: %q", treePath)
-    } else {
-        // Если нет параметра, пробуем извлечь из URL
-        urlPath := ctx.Req.URL.Path
-        prefix := fmt.Sprintf("/%s/%s/download/folder/", 
-            ctx.Repo.Repository.OwnerName, ctx.Repo.Repository.Name)
-        if strings.HasPrefix(urlPath, prefix) {
-            treePath = strings.TrimPrefix(urlPath, prefix)
-            log.Info("Extracted path from URL: %q", treePath)
-        }
+    // Получаем путь из параметра маршрута
+    treePath := ctx.PathParam("*")
+    if treePath == "" {
+        treePath = ctx.PathParam("path") // альтернативное имя параметра
     }
     
-    if treePath != "" {
-        // Декодируем URL-encoded путь
-        decodedPath, err := url.PathUnescape(treePath)
-        if err != nil {
-            log.Error("Failed to decode path %q: %v", treePath, err)
-            ctx.NotFound(err)
-            return
-        }
-        treePath = decodedPath
-        log.Info("Decoded path: %q", treePath)
-    }
-    
-    // Нормализуем путь
+    // Удаляем начальный слэш если есть
     treePath = strings.TrimPrefix(treePath, "/")
-    treePath = strings.TrimSuffix(treePath, "/")
-    log.Info("Normalized path: %q", treePath)
+    
+    log.Info("DownloadFolder: treePath=%q", treePath)
 
-    // Get the commit
+    // Get the commit - проверяем, что commit существует
     if ctx.Repo.Commit == nil {
+        // Попробуем получить коммит из репозитория
         var err error
         ctx.Repo.Commit, err = ctx.Repo.GitRepo.GetBranchCommit(ctx.Repo.Repository.DefaultBranch)
         if err != nil {
@@ -226,57 +193,44 @@ func DownloadFolder(ctx *context.Context) {
             ctx.ServerError("GetCommit", err)
             return
         }
-        log.Info("Loaded commit: %s", ctx.Repo.Commit.ID.String())
     }
     
     commit := ctx.Repo.Commit
     if commit == nil {
-        log.Error("Commit is nil")
         ctx.NotFound(nil)
         return
     }
 
-    // Если путь пустой, используем корень репозитория
+    log.Info("DownloadFolder: commit ID: %s, path: %s", commit.ID.String(), treePath)
+
+    // Если путь пустой, скачиваем корневую папку репозитория
     if treePath == "" {
-        log.Info("Downloading root folder")
+        // Для корневой папки используем имя репозитория
         folderName := ctx.Repo.Repository.Name
         archiveName := fmt.Sprintf("%s-%s.zip", folderName, commit.ID.String()[:7])
         ctx.Resp.Header().Set("Content-Type", "application/zip")
         ctx.Resp.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, archiveName))
 
+        // Create ZIP archive
         zipWriter := zip.NewWriter(ctx.Resp)
         defer zipWriter.Close()
 
+        // Recursively add folder contents to ZIP
         err := addFolderToZip(zipWriter, commit, "", "")
         if err != nil {
             log.Error("Failed to create zip archive: %v", err)
             ctx.ServerError("CreateZip", err)
+            return
         }
         return
     }
 
-    log.Info("Trying to access path: %q", treePath)
-    
-    // Проверяем существование папки
+    // Verify it's a directory
     entry, err := commit.GetTreeEntryByPath(treePath)
     if err != nil {
         log.Error("GetTreeEntryByPath error for path %q: %v", treePath, err)
         if git.IsErrNotExist(err) {
-            log.Info("Path not found: %q", treePath)
-            
-            // Попробуем перечислить все доступные пути в репозитории для отладки
-            log.Info("Listing available paths in repository for debugging:")
-            rootTree, _ := commit.SubTree("")
-            if rootTree != nil {
-                entries, _ := rootTree.ListEntriesRecursiveFast()
-                if entries != nil {
-                    for _, e := range entries {
-                        log.Info("  - %s (dir: %v)", e.Name(), e.IsDir())
-                    }
-                }
-            }
-            
-            ctx.NotFound(err)
+            ctx.NotFound(nil)
         } else {
             ctx.ServerError("GetTreeEntryByPath", err)
         }
@@ -284,16 +238,13 @@ func DownloadFolder(ctx *context.Context) {
     }
 
     if !entry.IsDir() {
-        log.Error("Path %q is not a directory (type: %v)", treePath, entry.Type())
         ctx.NotFound(nil)
         return
     }
 
-    log.Info("Found directory: %q, proceeding to zip", treePath)
-    
     // Set download headers
     folderName := path.Base(treePath)
-    if folderName == "" || folderName == "." || folderName == "/" {
+    if folderName == "" || folderName == "." {
         folderName = ctx.Repo.Repository.Name
     }
     archiveName := fmt.Sprintf("%s-%s.zip", folderName, commit.ID.String()[:7])
@@ -311,8 +262,6 @@ func DownloadFolder(ctx *context.Context) {
         ctx.ServerError("CreateZip", err)
         return
     }
-    
-    log.Info("Successfully created zip for path: %q", treePath)
 }
 
 // addFolderToZip recursively adds folder contents to ZIP archive
@@ -346,14 +295,15 @@ func addFolderToZip(zipWriter *zip.Writer, commit *git.Commit, treePath string, 
             if err != nil {
                 return err
             }
-            defer dataReader.Close()
             
             zipEntry, err := zipWriter.Create(zipEntryPath)
             if err != nil {
+                dataReader.Close()
                 return err
             }
             
             _, err = io.Copy(zipEntry, dataReader)
+            dataReader.Close()
             if err != nil {
                 return err
             }
