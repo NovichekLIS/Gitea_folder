@@ -29,7 +29,7 @@
 				{{else}}
 					{{if $entry.IsDir}}
 						{{$subJumpablePathName := $entry.GetSubJumpablePathName}}
-						    <a class="flex-text-inline muted" href="{{$.RepoLink}}/download/folder/{{PathEscapeSegments $downloadPath}}" data-tooltip-content='{{ctx.Locale.Tr "repo.download_folder"}}' title='{{ctx.Locale.Tr "repo.download_folder"}}'>⬇️</a>
+						<a class="flex-text-inline muted" href="{{$.RepoLink}}/download/folder/{{if $.TreePath}}{{$.TreePath}}/{{end}}{{$entry.Name}}" data-tooltip-content='{{ctx.Locale.Tr "repo.download_folder"}}' title='{{ctx.Locale.Tr "repo.download_folder"}}'>⬇️</a>
 						<a class="entry-name" href="{{$.TreeLink}}/{{PathEscapeSegments $subJumpablePathName}}" title="{{$subJumpablePathName}}">
 							{{$subJumpablePathFields := StringUtils.Split $subJumpablePathName "/"}}
 							{{$subJumpablePathFieldLast := (Eval (len $subJumpablePathFields) "-" 1)}}
