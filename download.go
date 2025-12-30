@@ -198,7 +198,6 @@ func DownloadFolder(ctx *context.Context) {
         if branchName == "" {
             branchName = ctx.Repo.Repository.DefaultBranch
         }
-        var err error
         commit, err = ctx.Repo.GitRepo.GetBranchCommit(branchName)
         if err != nil {
             log.Error("Failed to get commit for branch %s: %v", branchName, err)
@@ -208,7 +207,7 @@ func DownloadFolder(ctx *context.Context) {
     }
     
     if commit == nil {
-        ctx.NotFound("Commit not found")
+        ctx.NotFound(fmt.Errorf("commit not found"))
         return
     }
 
@@ -217,7 +216,7 @@ func DownloadFolder(ctx *context.Context) {
     if err != nil {
         log.Error("GetTreeEntryByPath failed for %q: %v", decodedPath, err)
         if git.IsErrNotExist(err) {
-            ctx.NotFound("Path not found: " + decodedPath)
+            ctx.NotFound(fmt.Errorf("path not found: %s", decodedPath))
         } else {
             ctx.ServerError("GetTreeEntryByPath", err)
         }
@@ -225,7 +224,7 @@ func DownloadFolder(ctx *context.Context) {
     }
 
     if !entry.IsDir() {
-        ctx.NotFound("Path is not a directory: " + decodedPath)
+        ctx.NotFound(fmt.Errorf("path is not a directory: %s", decodedPath))
         return
     }
 
