@@ -10,6 +10,7 @@ import (
     "io"
     "path"
     "time"
+    "strings"
 
     git_model "code.gitea.io/gitea/models/git"
     "code.gitea.io/gitea/modules/git"
@@ -171,8 +172,11 @@ func DownloadByIDOrLFS(ctx *context.Context) {
 func DownloadFolder(ctx *context.Context) {
     // Получаем путь из параметра маршрута
     treePath := ctx.PathParam("path")
+    if treePath == "" {
+        treePath = ctx.PathParam("*") // Для обратной совместимости
+    }
     
-    // Декодируем путь, если он закодирован
+    // Нормализуем путь - удаляем начальные и конечные слэши
     treePath = strings.TrimPrefix(treePath, "/")
     treePath = strings.TrimSuffix(treePath, "/")
     
@@ -234,7 +238,7 @@ func DownloadFolder(ctx *context.Context) {
 
     // Set download headers
     folderName := path.Base(treePath)
-    if folderName == "" || folderName == "." {
+    if folderName == "" || folderName == "." || folderName == "/" {
         folderName = ctx.Repo.Repository.Name
     }
     archiveName := fmt.Sprintf("%s-%s.zip", folderName, commit.ID.String()[:7])
