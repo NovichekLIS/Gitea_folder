@@ -172,16 +172,11 @@ func DownloadByIDOrLFS(ctx *context.Context) {
 
 // DownloadFolder handles the folder download request
 func DownloadFolder(ctx *context.Context) {
-    // Получаем путь из параметра маршрута
     treePath := ctx.PathParam("*")
-    if treePath == "" {
-        treePath = ctx.PathParam("path") // альтернативное имя параметра
+    if len(treePath) == 0 {
+        ctx.NotFound(nil)
+        return
     }
-    
-    // Удаляем начальный слэш если есть
-    treePath = strings.TrimPrefix(treePath, "/")
-    
-    log.Info("DownloadFolder: treePath=%q", treePath)
 
     // Get the commit - проверяем, что commit существует
     if ctx.Repo.Commit == nil {
@@ -201,34 +196,9 @@ func DownloadFolder(ctx *context.Context) {
         return
     }
 
-    log.Info("DownloadFolder: commit ID: %s, path: %s", commit.ID.String(), treePath)
-
-    // Если путь пустой, скачиваем корневую папку репозитория
-    if treePath == "" {
-        // Для корневой папки используем имя репозитория
-        folderName := ctx.Repo.Repository.Name
-        archiveName := fmt.Sprintf("%s-%s.zip", folderName, commit.ID.String()[:7])
-        ctx.Resp.Header().Set("Content-Type", "application/zip")
-        ctx.Resp.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, archiveName))
-
-        // Create ZIP archive
-        zipWriter := zip.NewWriter(ctx.Resp)
-        defer zipWriter.Close()
-
-        // Recursively add folder contents to ZIP
-        err := addFolderToZip(zipWriter, commit, "", "")
-        if err != nil {
-            log.Error("Failed to create zip archive: %v", err)
-            ctx.ServerError("CreateZip", err)
-            return
-        }
-        return
-    }
-
     // Verify it's a directory
     entry, err := commit.GetTreeEntryByPath(treePath)
     if err != nil {
-        log.Error("GetTreeEntryByPath error for path %q: %v", treePath, err)
         if git.IsErrNotExist(err) {
             ctx.NotFound(nil)
         } else {
@@ -295,15 +265,14 @@ func addFolderToZip(zipWriter *zip.Writer, commit *git.Commit, treePath string, 
             if err != nil {
                 return err
             }
+            defer dataReader.Close()
             
             zipEntry, err := zipWriter.Create(zipEntryPath)
             if err != nil {
-                dataReader.Close()
                 return err
             }
             
             _, err = io.Copy(zipEntry, dataReader)
-            dataReader.Close()
             if err != nil {
                 return err
             }
