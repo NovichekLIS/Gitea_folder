@@ -1555,6 +1555,7 @@ func registerWebRoutes(m *web.Router) {
 		}, repo.MustBeNotEmpty)
 		
 		m.Get("/download/folder/{*}", repo.MustBeNotEmpty, repo.DownloadFolder)
+		m.Get("/download/{sha}", repo.MustBeNotEmpty, repo.DownloadByIDOrLFS)
 
 		m.Group("/archive", func() {
 			m.Get("/*", repo.Download)

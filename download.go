@@ -181,47 +181,25 @@ func DownloadFolder(ctx *context.Context) {
         decodedPath = treePath
     }
     
-    // Log for debugging
-    log.Info("DownloadFolder: treePath=%q, decodedPath=%q", treePath, decodedPath)
-    log.Info("DownloadFolder: Repo.TreePath=%q, Repo.BranchName=%q", ctx.Repo.TreePath, ctx.Repo.BranchName)
-    log.Info("DownloadFolder: Repo.Commit=%v", ctx.Repo.Commit)
-    
     // Set the tree path in context
     ctx.Repo.TreePath = decodedPath
     
     // Get the commit
-    var commit *git.Commit
-    if ctx.Repo.Commit != nil {
-        commit = ctx.Repo.Commit
-    } else {
-        // Try to get commit from current branch
-        branchName := ctx.Repo.BranchName
-        if branchName == "" {
-            branchName = ctx.Repo.Repository.DefaultBranch
-        }
-        log.Info("DownloadFolder: Getting commit for branch %s", branchName)
-        commit, err = ctx.Repo.GitRepo.GetBranchCommit(branchName)
+    commit := ctx.Repo.Commit
+    if commit == nil {
+        // Try to get commit from default branch
+        commit, err = ctx.Repo.GitRepo.GetBranchCommit(ctx.Repo.Repository.DefaultBranch)
         if err != nil {
-            log.Error("Failed to get commit for branch %s: %v", branchName, err)
             ctx.ServerError("GetCommit", err)
             return
         }
     }
     
-    if commit == nil {
-        log.Error("DownloadFolder: Commit is nil after attempt to get it")
-        ctx.NotFound(fmt.Errorf("commit not found"))
-        return
-    }
-    
-    log.Info("DownloadFolder: Using commit %s", commit.ID.String())
-
     // Verify it's a directory
     entry, err := commit.GetTreeEntryByPath(decodedPath)
     if err != nil {
-        log.Error("GetTreeEntryByPath failed for %q: %v", decodedPath, err)
         if git.IsErrNotExist(err) {
-            ctx.NotFound(fmt.Errorf("path not found: %s", decodedPath))
+            ctx.NotFound(nil)
         } else {
             ctx.ServerError("GetTreeEntryByPath", err)
         }
@@ -229,7 +207,7 @@ func DownloadFolder(ctx *context.Context) {
     }
 
     if !entry.IsDir() {
-        ctx.NotFound(fmt.Errorf("path is not a directory: %s", decodedPath))
+        ctx.NotFound(nil)
         return
     }
 
@@ -249,12 +227,9 @@ func DownloadFolder(ctx *context.Context) {
     // Recursively add folder contents to ZIP
     err = addFolderToZip(zipWriter, commit, decodedPath, "")
     if err != nil {
-        log.Error("Failed to create zip archive: %v", err)
         ctx.ServerError("CreateZip", err)
         return
     }
-    
-    log.Info("DownloadFolder: Successfully created zip for %q", decodedPath)
 }
 
 // addFolderToZip recursively adds folder contents to ZIP archive
