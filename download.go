@@ -179,7 +179,7 @@ func DownloadFolder(ctx *context.Context) {
     decodedPath, err := url.PathUnescape(treePath)
     if err != nil {
         log.Error("Failed to decode path: %v", err)
-        ctx.NotFound("Invalid path")
+        ctx.NotFound(err) // Исправлено: передаем ошибку, а не строку
         return
     }
     
@@ -204,7 +204,7 @@ func DownloadFolder(ctx *context.Context) {
     commit := ctx.Repo.Commit
     if commit == nil {
         log.Error("DownloadFolder: commit is nil")
-        ctx.NotFound(nil)
+        ctx.NotFound(nil) // Исправлено
         return
     }
 
@@ -238,7 +238,7 @@ func DownloadFolder(ctx *context.Context) {
     if err != nil {
         log.Error("GetTreeEntryByPath error for path %q: %v", treePath, err)
         if git.IsErrNotExist(err) {
-            ctx.NotFound("Folder not found")
+            ctx.NotFound(err) // Исправлено: передаем оригинальную ошибку
         } else {
             ctx.ServerError("GetTreeEntryByPath", err)
         }
@@ -247,7 +247,7 @@ func DownloadFolder(ctx *context.Context) {
 
     if !entry.IsDir() {
         log.Error("Path %q is not a directory", treePath)
-        ctx.NotFound("Not a directory")
+        ctx.NotFound(nil) // Исправлено
         return
     }
 
