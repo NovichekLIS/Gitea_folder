@@ -168,7 +168,6 @@ func DownloadByIDOrLFS(ctx *context.Context) {
     }
 }
 
-// DownloadFolder handles the folder download request
 func DownloadFolder(ctx *context.Context) {
     treePath := ctx.PathParam("*")
     if len(treePath) == 0 {
@@ -183,7 +182,9 @@ func DownloadFolder(ctx *context.Context) {
     }
     
     // Log for debugging
-    log.Trace("DownloadFolder: treePath=%q, decodedPath=%q", treePath, decodedPath)
+    log.Info("DownloadFolder: treePath=%q, decodedPath=%q", treePath, decodedPath)
+    log.Info("DownloadFolder: Repo.TreePath=%q, Repo.BranchName=%q", ctx.Repo.TreePath, ctx.Repo.BranchName)
+    log.Info("DownloadFolder: Repo.Commit=%v, Repo.Ref=%q", ctx.Repo.Commit, ctx.Repo.Ref)
     
     // Set the tree path in context
     ctx.Repo.TreePath = decodedPath
@@ -198,6 +199,7 @@ func DownloadFolder(ctx *context.Context) {
         if branchName == "" {
             branchName = ctx.Repo.Repository.DefaultBranch
         }
+        log.Info("DownloadFolder: Getting commit for branch %s", branchName)
         commit, err = ctx.Repo.GitRepo.GetBranchCommit(branchName)
         if err != nil {
             log.Error("Failed to get commit for branch %s: %v", branchName, err)
@@ -207,9 +209,12 @@ func DownloadFolder(ctx *context.Context) {
     }
     
     if commit == nil {
+        log.Error("DownloadFolder: Commit is nil after attempt to get it")
         ctx.NotFound(fmt.Errorf("commit not found"))
         return
     }
+    
+    log.Info("DownloadFolder: Using commit %s", commit.ID.String())
 
     // Verify it's a directory
     entry, err := commit.GetTreeEntryByPath(decodedPath)
@@ -249,7 +254,7 @@ func DownloadFolder(ctx *context.Context) {
         return
     }
     
-    log.Trace("DownloadFolder: Successfully created zip for %q", decodedPath)
+    log.Info("DownloadFolder: Successfully created zip for %q", decodedPath)
 }
 
 // addFolderToZip recursively adds folder contents to ZIP archive
