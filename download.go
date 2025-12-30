@@ -174,7 +174,10 @@ func DownloadFolder(ctx *context.Context) {
         ctx.NotFound(nil)
         return
     }
-
+    
+    // Устанавливаем TreePath в контекст для корректной работы
+    ctx.Repo.TreePath = treePath
+    
     // Get the commit - проверяем, что commit существует
     if ctx.Repo.Commit == nil {
         // Попробуем получить коммит из репозитория
