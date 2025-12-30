@@ -193,12 +193,17 @@ func DownloadFolder(ctx *context.Context) {
         commit = ctx.Repo.Commit
         log.Info("DownloadFolder: Using existing commit from context: %s", commit.ID.String())
     } else {
-        // First try to get commit from current branch
-        ref := ctx.Repo.RefName
-        if ref == "" {
-            // If no ref in context, use default branch
+        // Get ref from context - check different possible fields
+        ref := ""
+        
+        // Try BranchName first
+        if ctx.Repo.BranchName != "" {
+            ref = ctx.Repo.BranchName
+            log.Info("DownloadFolder: Using BranchName: %s", ref)
+        } else {
+            // Use default branch
             ref = ctx.Repo.Repository.DefaultBranch
-            log.Info("DownloadFolder: No ref in context, using default branch: %s", ref)
+            log.Info("DownloadFolder: No branch in context, using default branch: %s", ref)
         }
         
         log.Info("DownloadFolder: Getting commit for ref: %s", ref)
