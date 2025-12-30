@@ -184,7 +184,7 @@ func DownloadFolder(ctx *context.Context) {
     // Log for debugging
     log.Info("DownloadFolder: treePath=%q, decodedPath=%q", treePath, decodedPath)
     log.Info("DownloadFolder: Repo.TreePath=%q, Repo.BranchName=%q", ctx.Repo.TreePath, ctx.Repo.BranchName)
-    log.Info("DownloadFolder: Repo.Commit=%v, Repo.Ref=%q", ctx.Repo.Commit, ctx.Repo.Ref)
+    log.Info("DownloadFolder: Repo.Commit=%v", ctx.Repo.Commit)
     
     // Set the tree path in context
     ctx.Repo.TreePath = decodedPath
