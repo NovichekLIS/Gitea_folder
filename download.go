@@ -8,9 +8,11 @@ import (
     "archive/zip"
     "fmt"
     "io"
+    "net/url"
     "path"
-    "time"
     "strings"
+    "time"
+    
 
     git_model "code.gitea.io/gitea/models/git"
     "code.gitea.io/gitea/modules/git"
@@ -171,15 +173,22 @@ func DownloadByIDOrLFS(ctx *context.Context) {
 // DownloadFolder handles the folder download request
 func DownloadFolder(ctx *context.Context) {
     // Получаем путь из параметра маршрута
-    treePath := ctx.PathParam("path")
-    if treePath == "" {
-        treePath = ctx.PathParam("*") // Для обратной совместимости
+    treePath := ctx.PathParam("treePath")
+    
+    // Декодируем URL-encoded путь
+    decodedPath, err := url.PathUnescape(treePath)
+    if err != nil {
+        log.Error("Failed to decode path: %v", err)
+        ctx.NotFound("Invalid path")
+        return
     }
     
-    // Нормализуем путь - удаляем начальные и конечные слэши
-    treePath = strings.TrimPrefix(treePath, "/")
+    // Нормализуем путь
+    treePath = strings.TrimPrefix(decodedPath, "/")
     treePath = strings.TrimSuffix(treePath, "/")
     
+    log.Info("DownloadFolder: requested path: %q", treePath)
+
     // Get the commit - проверяем, что commit существует
     if ctx.Repo.Commit == nil {
         // Попробуем получить коммит из репозитория
@@ -194,12 +203,16 @@ func DownloadFolder(ctx *context.Context) {
     
     commit := ctx.Repo.Commit
     if commit == nil {
+        log.Error("DownloadFolder: commit is nil")
         ctx.NotFound(nil)
         return
     }
 
+    log.Info("DownloadFolder: commit ID: %s, path: %s", commit.ID.String(), treePath)
+
     // Если путь пустой, используем корень репозитория
     if treePath == "" {
+        log.Info("DownloadFolder: downloading root folder")
         // Для корневой папки используем имя репозитория
         folderName := ctx.Repo.Repository.Name
         archiveName := fmt.Sprintf("%s-%s.zip", folderName, commit.ID.String()[:7])
@@ -223,8 +236,9 @@ func DownloadFolder(ctx *context.Context) {
     // Verify it's a directory
     entry, err := commit.GetTreeEntryByPath(treePath)
     if err != nil {
+        log.Error("GetTreeEntryByPath error for path %q: %v", treePath, err)
         if git.IsErrNotExist(err) {
-            ctx.NotFound(nil)
+            ctx.NotFound("Folder not found")
         } else {
             ctx.ServerError("GetTreeEntryByPath", err)
         }
@@ -232,7 +246,8 @@ func DownloadFolder(ctx *context.Context) {
     }
 
     if !entry.IsDir() {
-        ctx.NotFound(nil)
+        log.Error("Path %q is not a directory", treePath)
+        ctx.NotFound("Not a directory")
         return
     }
 

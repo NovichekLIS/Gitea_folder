@@ -1554,8 +1554,8 @@ func registerWebRoutes(m *web.Router) {
 			m.Get("/{period}", repo.ActivityAuthors)
 		}, repo.MustBeNotEmpty)
 		
-		m.Get("/download/folder/{path:*}", repo.MustBeNotEmpty, repo.DownloadFolder)
-		
+		m.Get("/download/folder/{treePath:*}", repo.MustBeNotEmpty, repo.DownloadFolder)
+
 		m.Group("/archive", func() {
 			m.Get("/*", repo.Download)
 			m.Post("/*", repo.InitiateDownload)
