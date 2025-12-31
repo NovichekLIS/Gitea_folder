@@ -189,25 +189,16 @@ func DownloadFolder(ctx *context.Context) {
         commit = ctx.Repo.Commit
         log.Info("DownloadFolder: Using existing commit from context: %s", commit.ID.String())
     } else {
-        // Get ref from context
-        ref := ""
-        
-        // Try BranchName first
-        if ctx.Repo.BranchName != "" {
-            ref = ctx.Repo.BranchName
-            log.Info("DownloadFolder: Using BranchName: %s", ref)
-        } else if ctx.Repo.TagName != "" {
-            // Also check TagName for tags
-            ref = ctx.Repo.TagName
-            log.Info("DownloadFolder: Using TagName: %s", ref)
-        } else if ctx.Repo.Commit != nil && ctx.Repo.Commit.ID != nil {
-            // Use commit ID if available
-            ref = ctx.Repo.Commit.ID.String()
-            log.Info("DownloadFolder: Using Commit ID: %s", ref)
-        } else {
-            // Use default branch
+        // Get ref from context - use Ref field which should contain branch/tag/commit
+        ref := ctx.Repo.BranchName
+        if ref == "" {
+         // Если ветка не установлена, пробуем получить текущую HEAD ветку
+         headRef, err := ctx.Repo.GitRepo.GetHEADBranch()
+        if err == nil && headRef != nil {
+        ref = headRef.Name
+         } else {
             ref = ctx.Repo.Repository.DefaultBranch
-            log.Info("DownloadFolder: No branch in context, using default branch: %s", ref)
+            }
         }
         
         log.Info("DownloadFolder: Getting commit for ref: %s", ref)
@@ -275,7 +266,7 @@ func DownloadFolder(ctx *context.Context) {
     }
     
     log.Info("DownloadFolder: Successfully created zip for %q", decodedPath)
-}
+}   
 
 // addFolderToZip recursively adds folder contents to ZIP archive
 func addFolderToZip(zipWriter *zip.Writer, commit *git.Commit, treePath string, zipPath string) error {
