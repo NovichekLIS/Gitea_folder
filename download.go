@@ -183,41 +183,23 @@ func DownloadFolder(ctx *context.Context) {
     
     log.Info("DownloadFolder: treePath=%q, decodedPath=%q", treePath, decodedPath)
     
-    // Get the commit - try to use the commit from context first
+    // Get the commit
     var commit *git.Commit
     
-    // Check if we have a commit in context (this should be set by RepoAssignment middleware)
+    // First, try to use commit from context (set by RepoAssignment middleware)
     if ctx.Repo.Commit != nil {
         commit = ctx.Repo.Commit
         log.Info("DownloadFolder: Using existing commit from context: %s", commit.ID.String())
     } else {
-        // No commit in context, try to get it from git repo
-        // First try to get the current branch
-        headRef, err := ctx.Repo.GitRepo.GetHEADBranch()
+        // Fallback: use default branch
+        ref := ctx.Repo.Repository.DefaultBranch
+        log.Info("DownloadFolder: No commit in context, using default branch: %s", ref)
+        
+        var err error
+        commit, err = ctx.Repo.GitRepo.GetCommit(ref)
         if err != nil {
-            log.Error("Failed to get HEAD branch: %v", err)
-            // Use default branch as fallback
-            ref := ctx.Repo.Repository.DefaultBranch
-            log.Info("DownloadFolder: Using default branch: %s", ref)
-            commit, err = ctx.Repo.GitRepo.GetCommit(ref)
-            if err != nil {
-                ctx.ServerError("GetCommit", err)
-                return
-            }
-        } else {
-            // Use the HEAD branch
-            log.Info("DownloadFolder: Using HEAD branch: %s", headRef.Name)
-            commit, err = ctx.Repo.GitRepo.GetCommit(headRef.Name)
-            if err != nil {
-                // Fallback to default branch
-                ref := ctx.Repo.Repository.DefaultBranch
-                log.Info("DownloadFolder: Failed to get commit for HEAD, using default branch: %s", ref)
-                commit, err = ctx.Repo.GitRepo.GetCommit(ref)
-                if err != nil {
-                    ctx.ServerError("GetCommit", err)
-                    return
-                }
-            }
+            ctx.ServerError("GetCommit", err)
+            return
         }
     }
     
