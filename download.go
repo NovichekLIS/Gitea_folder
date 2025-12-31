@@ -190,15 +190,13 @@ func DownloadFolder(ctx *context.Context) {
         log.Info("DownloadFolder: Using existing commit from context: %s", commit.ID.String())
     } else {
         // Get ref from context - use Ref field which should contain branch/tag/commit
-        ref := ctx.Repo.BranchName
+        ref := ctx.Repo.Ref
         if ref == "" {
-         // Если ветка не установлена, пробуем получить текущую HEAD ветку
-         headRef, err := ctx.Repo.GitRepo.GetHEADBranch()
-        if err == nil && headRef != nil {
-        ref = headRef.Name
-         } else {
+            // If Ref is empty, use default branch
             ref = ctx.Repo.Repository.DefaultBranch
-            }
+            log.Info("DownloadFolder: No ref in context, using default branch: %s", ref)
+        } else {
+            log.Info("DownloadFolder: Using Ref from context: %s", ref)
         }
         
         log.Info("DownloadFolder: Getting commit for ref: %s", ref)
@@ -266,7 +264,7 @@ func DownloadFolder(ctx *context.Context) {
     }
     
     log.Info("DownloadFolder: Successfully created zip for %q", decodedPath)
-}   
+}
 
 // addFolderToZip recursively adds folder contents to ZIP archive
 func addFolderToZip(zipWriter *zip.Writer, commit *git.Commit, treePath string, zipPath string) error {
