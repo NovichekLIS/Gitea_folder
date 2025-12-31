@@ -183,33 +183,40 @@ func DownloadFolder(ctx *context.Context) {
     
     log.Info("DownloadFolder: treePath=%q, decodedPath=%q", treePath, decodedPath)
     
-    // Get the commit - always use the commit from context or get it explicitly
+    // Get the commit - try to use the commit from context first
     var commit *git.Commit
+    
+    // Check if we have a commit in context (this should be set by RepoAssignment middleware)
     if ctx.Repo.Commit != nil {
         commit = ctx.Repo.Commit
         log.Info("DownloadFolder: Using existing commit from context: %s", commit.ID.String())
     } else {
-        // Get ref from context - use Ref field which should contain branch/tag/commit
-        ref := ctx.Repo.Ref
-        if ref == "" {
-            // If Ref is empty, use default branch
-            ref = ctx.Repo.Repository.DefaultBranch
-            log.Info("DownloadFolder: No ref in context, using default branch: %s", ref)
-        } else {
-            log.Info("DownloadFolder: Using Ref from context: %s", ref)
-        }
-        
-        log.Info("DownloadFolder: Getting commit for ref: %s", ref)
-        // Try to get commit by ref (branch, tag, or commit hash)
-        var err error
-        commit, err = ctx.Repo.GitRepo.GetCommit(ref)
+        // No commit in context, try to get it from git repo
+        // First try to get the current branch
+        headRef, err := ctx.Repo.GitRepo.GetHEADBranch()
         if err != nil {
-            log.Error("Failed to get commit for ref %s: %v", ref, err)
-            // Try one more time with default branch
-            commit, err = ctx.Repo.GitRepo.GetCommit(ctx.Repo.Repository.DefaultBranch)
+            log.Error("Failed to get HEAD branch: %v", err)
+            // Use default branch as fallback
+            ref := ctx.Repo.Repository.DefaultBranch
+            log.Info("DownloadFolder: Using default branch: %s", ref)
+            commit, err = ctx.Repo.GitRepo.GetCommit(ref)
             if err != nil {
                 ctx.ServerError("GetCommit", err)
                 return
+            }
+        } else {
+            // Use the HEAD branch
+            log.Info("DownloadFolder: Using HEAD branch: %s", headRef.Name)
+            commit, err = ctx.Repo.GitRepo.GetCommit(headRef.Name)
+            if err != nil {
+                // Fallback to default branch
+                ref := ctx.Repo.Repository.DefaultBranch
+                log.Info("DownloadFolder: Failed to get commit for HEAD, using default branch: %s", ref)
+                commit, err = ctx.Repo.GitRepo.GetCommit(ref)
+                if err != nil {
+                    ctx.ServerError("GetCommit", err)
+                    return
+                }
             }
         }
     }
