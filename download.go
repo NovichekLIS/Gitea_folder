@@ -182,10 +182,6 @@ func DownloadFolder(ctx *context.Context) {
     }
     
     log.Info("DownloadFolder: treePath=%q, decodedPath=%q", treePath, decodedPath)
-    log.Info("DownloadFolder: Repo.TreePath=%q, Repo.BranchName=%q", 
-        ctx.Repo.TreePath, ctx.Repo.BranchName)
-    log.Info("DownloadFolder: Repository: %s, Owner: %s", 
-        ctx.Repo.Repository.Name, ctx.Repo.Repository.OwnerName)
     
     // Get the commit - always use the commit from context or get it explicitly
     var commit *git.Commit
@@ -193,13 +189,17 @@ func DownloadFolder(ctx *context.Context) {
         commit = ctx.Repo.Commit
         log.Info("DownloadFolder: Using existing commit from context: %s", commit.ID.String())
     } else {
-        // Get ref from context - check different possible fields
+        // Get ref from context
         ref := ""
         
         // Try BranchName first
         if ctx.Repo.BranchName != "" {
             ref = ctx.Repo.BranchName
             log.Info("DownloadFolder: Using BranchName: %s", ref)
+        } else if ctx.Repo.RefName != "" {
+            // Also check RefName
+            ref = ctx.Repo.RefName
+            log.Info("DownloadFolder: Using RefName: %s", ref)
         } else {
             // Use default branch
             ref = ctx.Repo.Repository.DefaultBranch
@@ -208,6 +208,7 @@ func DownloadFolder(ctx *context.Context) {
         
         log.Info("DownloadFolder: Getting commit for ref: %s", ref)
         // Try to get commit by ref (branch, tag, or commit hash)
+        var err error
         commit, err = ctx.Repo.GitRepo.GetCommit(ref)
         if err != nil {
             log.Error("Failed to get commit for ref %s: %v", ref, err)
@@ -232,15 +233,6 @@ func DownloadFolder(ctx *context.Context) {
     entry, err := commit.GetTreeEntryByPath(decodedPath)
     if err != nil {
         log.Error("GetTreeEntryByPath failed for %q in commit %s: %v", decodedPath, commit.ID.String(), err)
-        // Try to list what's actually in the commit
-        tree, err2 := commit.SubTree("")
-        if err2 == nil {
-            entries, _ := tree.ListEntries()
-            log.Info("DownloadFolder: Root entries: %d", len(entries))
-            for _, e := range entries {
-                log.Info("  - %s (IsDir: %v)", e.Name(), e.IsDir())
-            }
-        }
         
         if git.IsErrNotExist(err) {
             ctx.NotFound(fmt.Errorf("path not found: %s", decodedPath))
