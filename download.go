@@ -196,10 +196,14 @@ func DownloadFolder(ctx *context.Context) {
         if ctx.Repo.BranchName != "" {
             ref = ctx.Repo.BranchName
             log.Info("DownloadFolder: Using BranchName: %s", ref)
-        } else if ctx.Repo.RefName != "" {
-            // Also check RefName
-            ref = ctx.Repo.RefName
-            log.Info("DownloadFolder: Using RefName: %s", ref)
+        } else if ctx.Repo.TagName != "" {
+            // Also check TagName for tags
+            ref = ctx.Repo.TagName
+            log.Info("DownloadFolder: Using TagName: %s", ref)
+        } else if ctx.Repo.Commit != nil && ctx.Repo.Commit.ID != nil {
+            // Use commit ID if available
+            ref = ctx.Repo.Commit.ID.String()
+            log.Info("DownloadFolder: Using Commit ID: %s", ref)
         } else {
             // Use default branch
             ref = ctx.Repo.Repository.DefaultBranch
