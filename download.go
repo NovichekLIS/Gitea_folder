@@ -10,6 +10,7 @@ import (
     "io"
     "net/url" 
     "path"
+    "strings"
     "time"
 
     git_model "code.gitea.io/gitea/models/git"
@@ -167,43 +168,42 @@ func DownloadByIDOrLFS(ctx *context.Context) {
         ctx.ServerError("ServeBlob", err)
     }
 }
-// added LIS
 
+// DownloadFolder download a folder as ZIP archive
 func DownloadFolder(ctx *context.Context) {
+    // Получаем полный путь из параметра маршрута
     treePath := ctx.PathParam("*")
     if len(treePath) == 0 {
         ctx.NotFound(nil)
         return
     }
     
-    // URL decode the path if needed
+    // URL decode the path
     decodedPath, err := url.PathUnescape(treePath)
     if err != nil {
         decodedPath = treePath
     }
     
+    // Удаляем начальный слэш если есть
+    decodedPath = strings.TrimPrefix(decodedPath, "/")
+    
     log.Info("DownloadFolder: treePath=%q, decodedPath=%q", treePath, decodedPath)
     
-    // Get the commit
-    var commit *git.Commit
-    
-    // First, try to use commit from context (set by RepoAssignment middleware)
-    if ctx.Repo.Commit != nil {
-        commit = ctx.Repo.Commit
-        log.Info("DownloadFolder: Using existing commit from context: %s", commit.ID.String())
-    } else {
+    // Get the commit from context (set by RepoAssignment middleware)
+    if ctx.Repo.Commit == nil {
         // Fallback: use default branch
         ref := ctx.Repo.Repository.DefaultBranch
         log.Info("DownloadFolder: No commit in context, using default branch: %s", ref)
         
         var err error
-        commit, err = ctx.Repo.GitRepo.GetCommit(ref)
+        ctx.Repo.Commit, err = ctx.Repo.GitRepo.GetCommit(ref)
         if err != nil {
             ctx.ServerError("GetCommit", err)
             return
         }
     }
     
+    commit := ctx.Repo.Commit
     if commit == nil {
         log.Error("DownloadFolder: Commit is nil")
         ctx.NotFound(fmt.Errorf("commit not found"))
