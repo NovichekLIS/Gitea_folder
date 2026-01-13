@@ -286,20 +286,18 @@ func addFolderToZip(zipWriter *zip.Writer, commit *git.Commit, treePath string, 
     var err error
     
     if treePath == "" {
-        // Получаем корневое дерево коммита
-        tree := commit.Tree
-        if tree == nil {
+        // Для корневого пути используем дерево коммита
+        // commit.Tree - это поле, а не метод!
+        if commit.Tree == nil {
             return fmt.Errorf("commit tree is nil")
         }
-        // Получаем записи корневого дерева
-        entries, err = tree.ListEntries()
+        entries, err = commit.Tree.ListEntries()
     } else {
-        // Получаем дерево для указанного пути
+        // Для вложенного пути получаем поддерево
         tree, err := commit.SubTree(treePath)
         if err != nil {
             return err
         }
-        // Получаем записи поддерева
         entries, err = tree.ListEntries()
     }
     
