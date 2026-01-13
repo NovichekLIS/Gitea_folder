@@ -167,6 +167,7 @@ func DownloadByIDOrLFS(ctx *context.Context) {
         ctx.ServerError("ServeBlob", err)
     }
 }
+// added LIS
 
 func DownloadFolder(ctx *context.Context) {
     treePath := ctx.PathParam("*")
