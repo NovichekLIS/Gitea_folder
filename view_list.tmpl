@@ -29,7 +29,38 @@
 				{{else}}
 					{{if $entry.IsDir}}
 						{{$subJumpablePathName := $entry.GetSubJumpablePathName}}
-						<a class="flex-text-inline muted" href="{{$.RepoLink}}/download/folder/{{if $.TreePath}}{{$.TreePath}}/{{end}}{{$entry.Name}}" data-tooltip-content='{{ctx.Locale.Tr "repo.download_folder"}}' title='{{ctx.Locale.Tr "repo.download_folder"}}'>⬇️</a>
+						
+						{{/* Выпадающее меню для скачивания папки */}}
+						<div class="download-folder-dropdown">
+							<button class="dropdown-toggle" aria-haspopup="true" aria-expanded="false" data-tooltip-content='{{ctx.Locale.Tr "repo.download_folder"}}' title='{{ctx.Locale.Tr "repo.download_folder"}}'>
+								⬇️
+							</button>
+							<div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+								{{/* Формируем базовый путь для скачивания */}}
+								{{$downloadPath := ""}}
+								{{if $.TreePath}}
+									{{$downloadPath = printf "%s/%s" $.TreePath $entry.Name}}
+								{{else}}
+									{{$downloadPath = $entry.Name}}
+								{{end}}
+								{{$escapedPath := PathEscapeSegments $downloadPath}}
+								
+								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder/zip/{{$escapedPath}}">
+									<i class="octicon octicon-file-zip"></i> ZIP
+								</a>
+								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder/tar/{{$escapedPath}}">
+									<i class="octicon octicon-file-binary"></i> TAR
+								</a>
+								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder/tar.gz/{{$escapedPath}}">
+									<i class="octicon octicon-file-zip"></i> TAR.GZ
+								</a>
+								<div class="dropdown-divider"></div>
+								<a class="dropdown-item default" href="{{$.RepoLink}}/download/folder/{{$escapedPath}}">
+									<i class="octicon octicon-download"></i> {{ctx.Locale.Tr "repo.download_default"}}
+								</a>
+							</div>
+						</div>
+						
 						<a class="entry-name" href="{{$.TreeLink}}/{{PathEscapeSegments $subJumpablePathName}}" title="{{$subJumpablePathName}}">
 							{{$subJumpablePathFields := StringUtils.Split $subJumpablePathName "/"}}
 							{{$subJumpablePathFieldLast := (Eval (len $subJumpablePathFields) "-" 1)}}

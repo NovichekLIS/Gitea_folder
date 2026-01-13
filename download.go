@@ -5,7 +5,9 @@
 package repo
 
 import (
+    "archive/tar"
     "archive/zip"
+    "compress/gzip"
     "fmt"
     "io"
     "net/url" 
@@ -169,35 +171,55 @@ func DownloadByIDOrLFS(ctx *context.Context) {
     }
 }
 
-// DownloadFolder download a folder as ZIP archive
+// DownloadFolder download a folder as archive in specified format
 func DownloadFolder(ctx *context.Context) {
+    // Получаем формат и путь из параметров маршрута
+    format := ctx.PathParam("format")
     var treePath string
-    if pathParam := ctx.PathParam("*"); pathParam != "" {
-        treePath = pathParam
-    } else if pathParam := ctx.PathParam("path"); pathParam != "" {
-        treePath = pathParam
+    
+    // Если формат не указан, используем zip по умолчанию
+    if format == "" {
+        format = "zip"
+        // Пробуем получить путь из параметра "*"
+        treePath = ctx.PathParam("*")
     } else {
+        // Формат указан, получаем путь из "*"
+        treePath = ctx.PathParam("*")
+    }
+    
+    // Если путь все еще пустой, проверяем другие варианты
+    if treePath == "" {
         treePath = ctx.Req.URL.Query().Get("path")
     }
     
     if treePath == "" {
         treePath = "."
     }
-    log.Info("DownloadFolder: raw treePath=%q", treePath)
-
+    
+    // Нормализуем формат
+    format = normalizeFormat(format)
+    
+    log.Info("DownloadFolder: format=%q, raw treePath=%q", format, treePath)
+    
+    // URL decode the path
     decodedPath, err := url.PathUnescape(treePath)
     if err != nil {
         decodedPath = treePath
     }
+    
+    // Удаляем начальный слэш если есть
     decodedPath = strings.TrimPrefix(decodedPath, "/")
     
+    // Если путь ".", значит хотим скачать весь репозиторий
     if decodedPath == "." {
         decodedPath = ""
     }
     
-    log.Info("DownloadFolder: decodedPath=%q", decodedPath)
+    log.Info("DownloadFolder: format=%q, decodedPath=%q", format, decodedPath)
     
+    // Get the commit from context (set by RepoAssignment middleware)
     if ctx.Repo.Commit == nil {
+        // Fallback: use default branch
         ref := ctx.Repo.Repository.DefaultBranch
         log.Info("DownloadFolder: No commit in context, using default branch: %s", ref)
         
@@ -218,9 +240,9 @@ func DownloadFolder(ctx *context.Context) {
     
     log.Info("DownloadFolder: Using commit %s for path %s", commit.ID.String(), decodedPath)
 
-    if decodedPath == "" {
-        log.Info("DownloadFolder: Downloading entire repository")
-    } else {
+    // Для пустого пути (скачивание всего репозитория) проверяем, что коммит существует
+    if decodedPath != "" {
+        // Verify it's a directory
         entry, err := commit.GetTreeEntryByPath(decodedPath)
         if err != nil {
             log.Error("GetTreeEntryByPath failed for %q in commit %s: %v", decodedPath, commit.ID.String(), err)
@@ -240,34 +262,101 @@ func DownloadFolder(ctx *context.Context) {
 
         log.Info("DownloadFolder: Found directory entry: %s", entry.Name())
     }
+
+    // Set download headers
     folderName := path.Base(decodedPath)
     if folderName == "" || folderName == "." || folderName == "/" {
         folderName = ctx.Repo.Repository.Name
     }
-    archiveName := fmt.Sprintf("%s-%s.zip", folderName, commit.ID.String()[:7])
-    ctx.Resp.Header().Set("Content-Type", "application/zip")
+    
+    // Определяем расширение файла в зависимости от формата
+    var fileExt string
+    switch format {
+    case "tar":
+        fileExt = "tar"
+    case "tar.gz", "tgz":
+        fileExt = "tar.gz"
+    default: // zip
+        fileExt = "zip"
+    }
+    
+    archiveName := fmt.Sprintf("%s-%s.%s", folderName, commit.ID.String()[:7], fileExt)
+    
+    // Устанавливаем Content-Type в зависимости от формата
+    switch format {
+    case "tar":
+        ctx.Resp.Header().Set("Content-Type", "application/x-tar")
+    case "tar.gz", "tgz":
+        ctx.Resp.Header().Set("Content-Type", "application/gzip")
+    default: // zip
+        ctx.Resp.Header().Set("Content-Type", "application/zip")
+    }
+    
     ctx.Resp.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, archiveName))
 
-    zipWriter := zip.NewWriter(ctx.Resp)
-    defer zipWriter.Close()
-
-    err = addFolderToZip(zipWriter, commit, decodedPath, "")
+    // Создаем архив в зависимости от формата
+    switch format {
+    case "tar":
+        err = createTarArchive(ctx.Resp, commit, decodedPath, false)
+    case "tar.gz", "tgz":
+        err = createTarArchive(ctx.Resp, commit, decodedPath, true)
+    default: // zip
+        err = createZipArchive(ctx.Resp, commit, decodedPath)
+    }
+    
     if err != nil {
-        log.Error("Failed to create zip archive: %v", err)
-        ctx.ServerError("CreateZip", err)
+        log.Error("Failed to create %s archive: %v", format, err)
+        ctx.ServerError("CreateArchive", err)
         return
     }
     
-    log.Info("DownloadFolder: Successfully created zip for %q", decodedPath)
+    log.Info("DownloadFolder: Successfully created %s archive for %q", format, decodedPath)
 }
 
-// addFolderToZip recursively adds folder contents to ZIP archive
+// normalizeFormat нормализует название формата
+func normalizeFormat(format string) string {
+    format = strings.ToLower(format)
+    switch format {
+    case "tgz":
+        return "tar.gz"
+    case "gz", "gzip":
+        return "tar.gz"
+    default:
+        return format
+    }
+}
+
+// createZipArchive создает ZIP архив
+func createZipArchive(w io.Writer, commit *git.Commit, treePath string) error {
+    zipWriter := zip.NewWriter(w)
+    defer zipWriter.Close()
+
+    return addFolderToZip(zipWriter, commit, treePath, "")
+}
+
+// createTarArchive создает TAR архив с опциональным gzip сжатием
+func createTarArchive(w io.Writer, commit *git.Commit, treePath string, useGzip bool) error {
+    var out io.Writer = w
+    
+    // Применяем gzip сжатие если нужно
+    if useGzip {
+        gzipWriter := gzip.NewWriter(w)
+        defer gzipWriter.Close()
+        out = gzipWriter
+    }
+    
+    tarWriter := tar.NewWriter(out)
+    defer tarWriter.Close()
+    
+    return addFolderToTar(tarWriter, commit, treePath, "")
+}
+
+// addFolderToZip рекурсивно добавляет содержимое папки в ZIP архив
 func addFolderToZip(zipWriter *zip.Writer, commit *git.Commit, treePath string, zipPath string) error {
     var entries []*git.TreeEntry
     var err error
     
     if treePath == "" {
-
         entries, err = commit.Tree.ListEntries()
     } else {
         tree, err := commit.SubTree(treePath)
@@ -312,6 +401,84 @@ func addFolderToZip(zipWriter *zip.Writer, commit *git.Commit, treePath string, 
             }
             
             _, err = io.Copy(zipEntry, dataReader)
+            if err != nil {
+                return err
+            }
+        }
+    }
+    return nil
+}
+
+// addFolderToTar рекурсивно добавляет содержимое папки в TAR архив
+func addFolderToTar(tarWriter *tar.Writer, commit *git.Commit, treePath string, tarPath string) error {
+    var entries []*git.TreeEntry
+    var err error
+    
+    if treePath == "" {
+        entries, err = commit.Tree.ListEntries()
+    } else {
+        tree, err := commit.SubTree(treePath)
+        if err != nil {
+            return err
+        }
+        entries, err = tree.ListEntries()
+    }
+    
+    if err != nil {
+        return err
+    }
+
+    for _, entry := range entries {
+        var fullPath string
+        if treePath == "" {
+            fullPath = entry.Name()
+        } else {
+            fullPath = path.Join(treePath, entry.Name())
+        }
+        
+        tarEntryPath := path.Join(tarPath, entry.Name())
+        
+        if entry.IsDir() {
+            // Создаем запись для директории
+            header := &tar.Header{
+                Name:     tarEntryPath + "/",
+                Mode:     0755,
+                Typeflag: tar.TypeDir,
+            }
+            if err := tarWriter.WriteHeader(header); err != nil {
+                return err
+            }
+            
+            // Recursively process subdirectories
+            err = addFolderToTar(tarWriter, commit, fullPath, tarEntryPath)
+            if err != nil {
+                return err
+            }
+        } else {
+            // Add file to archive
+            blob := entry.Blob()
+            dataReader, err := blob.DataAsync()
+            if err != nil {
+                return err
+            }
+            defer dataReader.Close()
+            
+            // Получаем размер файла
+            size := blob.Size()
+            
+            // Создаем заголовок для файла
+            header := &tar.Header{
+                Name: tarEntryPath,
+                Mode: 0644,
+                Size: size,
+            }
+            
+            if err := tarWriter.WriteHeader(header); err != nil {
+                return err
+            }
+            
+            // Копируем содержимое файла
+            _, err = io.Copy(tarWriter, dataReader)
             if err != nil {
                 return err
             }
