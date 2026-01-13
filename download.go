@@ -171,45 +171,33 @@ func DownloadByIDOrLFS(ctx *context.Context) {
 
 // DownloadFolder download a folder as ZIP archive
 func DownloadFolder(ctx *context.Context) {
-    // Получаем путь из параметра маршрута
     var treePath string
-    
-    // Пробуем получить путь разными способами
     if pathParam := ctx.PathParam("*"); pathParam != "" {
         treePath = pathParam
     } else if pathParam := ctx.PathParam("path"); pathParam != "" {
         treePath = pathParam
     } else {
-        // Если путь не указан, проверяем query параметр
         treePath = ctx.Req.URL.Query().Get("path")
     }
     
     if treePath == "" {
-        // Если путь пустой, возможно это корневая папка репозитория
         treePath = "."
     }
-    
     log.Info("DownloadFolder: raw treePath=%q", treePath)
-    
-    // URL decode the path
+
     decodedPath, err := url.PathUnescape(treePath)
     if err != nil {
         decodedPath = treePath
     }
-    
-    // Удаляем начальный слэш если есть
     decodedPath = strings.TrimPrefix(decodedPath, "/")
     
-    // Если путь ".", значит хотим скачать весь репозиторий
     if decodedPath == "." {
         decodedPath = ""
     }
     
     log.Info("DownloadFolder: decodedPath=%q", decodedPath)
     
-    // Get the commit from context (set by RepoAssignment middleware)
     if ctx.Repo.Commit == nil {
-        // Fallback: use default branch
         ref := ctx.Repo.Repository.DefaultBranch
         log.Info("DownloadFolder: No commit in context, using default branch: %s", ref)
         
@@ -230,12 +218,9 @@ func DownloadFolder(ctx *context.Context) {
     
     log.Info("DownloadFolder: Using commit %s for path %s", commit.ID.String(), decodedPath)
 
-    // Для пустого пути (скачивание всего репозитория) проверяем, что коммит существует
     if decodedPath == "" {
-        // Скачиваем весь репозиторий
         log.Info("DownloadFolder: Downloading entire repository")
     } else {
-        // Verify it's a directory
         entry, err := commit.GetTreeEntryByPath(decodedPath)
         if err != nil {
             log.Error("GetTreeEntryByPath failed for %q in commit %s: %v", decodedPath, commit.ID.String(), err)
@@ -255,8 +240,6 @@ func DownloadFolder(ctx *context.Context) {
 
         log.Info("DownloadFolder: Found directory entry: %s", entry.Name())
     }
-
-    // Set download headers
     folderName := path.Base(decodedPath)
     if folderName == "" || folderName == "." || folderName == "/" {
         folderName = ctx.Repo.Repository.Name
@@ -265,11 +248,9 @@ func DownloadFolder(ctx *context.Context) {
     ctx.Resp.Header().Set("Content-Type", "application/zip")
     ctx.Resp.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, archiveName))
 
-    // Create ZIP archive
     zipWriter := zip.NewWriter(ctx.Resp)
     defer zipWriter.Close()
 
-    // Recursively add folder contents to ZIP
     err = addFolderToZip(zipWriter, commit, decodedPath, "")
     if err != nil {
         log.Error("Failed to create zip archive: %v", err)
@@ -286,12 +267,9 @@ func addFolderToZip(zipWriter *zip.Writer, commit *git.Commit, treePath string, 
     var err error
     
     if treePath == "" {
-        // Для корневого пути используем дерево коммита
-        // commit.Tree имеет тип git.Tree (значение), а не *git.Tree
-        // Проверяем, что коммит валиден, но не сравниваем Tree с nil
+
         entries, err = commit.Tree.ListEntries()
     } else {
-        // Для вложенного пути получаем поддерево
         tree, err := commit.SubTree(treePath)
         if err != nil {
             return err

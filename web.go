@@ -1555,7 +1555,7 @@ func registerWebRoutes(m *web.Router) {
 		}, repo.MustBeNotEmpty)
 		
 		m.Get("/download/folder", repo.MustBeNotEmpty, repo.DownloadFolder)
-		m.Get("/download/folder/*", repo.MustBeNotEmpty, repo.DownloadFolder)//added LIS
+		m.Get("/download/folder/*", repo.MustBeNotEmpty, repo.DownloadFolder)
 
 		m.Group("/archive", func() {
 			m.Get("/*", repo.Download)
