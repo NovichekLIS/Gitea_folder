@@ -172,9 +172,6 @@ func DownloadByIDOrLFS(ctx *context.Context) {
 // DownloadFolder download a folder as ZIP archive
 func DownloadFolder(ctx *context.Context) {
     // Получаем путь из параметра маршрута
-    // Для маршрута "/*" используем ctx.Params("*")
-    // Для маршрута "/{path:.*}" используем ctx.PathParam("path")
-    
     var treePath string
     
     // Пробуем получить путь разными способами
@@ -285,23 +282,27 @@ func DownloadFolder(ctx *context.Context) {
 
 // addFolderToZip recursively adds folder contents to ZIP archive
 func addFolderToZip(zipWriter *zip.Writer, commit *git.Commit, treePath string, zipPath string) error {
-    var tree *git.Tree
+    var entries []*git.TreeEntry
     var err error
     
     if treePath == "" {
-        // Получаем корневое дерево
-        tree, err = commit.Tree()
+        // Получаем корневое дерево коммита
+        tree := commit.Tree
+        if tree == nil {
+            return fmt.Errorf("commit tree is nil")
+        }
+        // Получаем записи корневого дерева
+        entries, err = tree.ListEntries()
     } else {
         // Получаем дерево для указанного пути
-        tree, err = commit.SubTree(treePath)
+        tree, err := commit.SubTree(treePath)
+        if err != nil {
+            return err
+        }
+        // Получаем записи поддерева
+        entries, err = tree.ListEntries()
     }
     
-    if err != nil {
-        return err
-    }
-
-    // List all entries in the tree
-    entries, err := tree.ListEntries()
     if err != nil {
         return err
     }
