@@ -171,12 +171,28 @@ func DownloadByIDOrLFS(ctx *context.Context) {
 
 // DownloadFolder download a folder as ZIP archive
 func DownloadFolder(ctx *context.Context) {
-    // Получаем полный путь из параметра маршрута
-    treePath := ctx.PathParam("*")
-    if len(treePath) == 0 {
-        ctx.NotFound(nil)
-        return
+    // Получаем путь из параметра маршрута
+    // Для маршрута "/*" используем ctx.Params("*")
+    // Для маршрута "/{path:.*}" используем ctx.PathParam("path")
+    
+    var treePath string
+    
+    // Пробуем получить путь разными способами
+    if pathParam := ctx.PathParam("*"); pathParam != "" {
+        treePath = pathParam
+    } else if pathParam := ctx.PathParam("path"); pathParam != "" {
+        treePath = pathParam
+    } else {
+        // Если путь не указан, проверяем query параметр
+        treePath = ctx.Req.URL.Query().Get("path")
     }
+    
+    if treePath == "" {
+        // Если путь пустой, возможно это корневая папка репозитория
+        treePath = "."
+    }
+    
+    log.Info("DownloadFolder: raw treePath=%q", treePath)
     
     // URL decode the path
     decodedPath, err := url.PathUnescape(treePath)
@@ -187,7 +203,12 @@ func DownloadFolder(ctx *context.Context) {
     // Удаляем начальный слэш если есть
     decodedPath = strings.TrimPrefix(decodedPath, "/")
     
-    log.Info("DownloadFolder: treePath=%q, decodedPath=%q", treePath, decodedPath)
+    // Если путь ".", значит хотим скачать весь репозиторий
+    if decodedPath == "." {
+        decodedPath = ""
+    }
+    
+    log.Info("DownloadFolder: decodedPath=%q", decodedPath)
     
     // Get the commit from context (set by RepoAssignment middleware)
     if ctx.Repo.Commit == nil {
@@ -212,25 +233,31 @@ func DownloadFolder(ctx *context.Context) {
     
     log.Info("DownloadFolder: Using commit %s for path %s", commit.ID.String(), decodedPath)
 
-    // Verify it's a directory
-    entry, err := commit.GetTreeEntryByPath(decodedPath)
-    if err != nil {
-        log.Error("GetTreeEntryByPath failed for %q in commit %s: %v", decodedPath, commit.ID.String(), err)
-        
-        if git.IsErrNotExist(err) {
-            ctx.NotFound(fmt.Errorf("path not found: %s", decodedPath))
-        } else {
-            ctx.ServerError("GetTreeEntryByPath", err)
+    // Для пустого пути (скачивание всего репозитория) проверяем, что коммит существует
+    if decodedPath == "" {
+        // Скачиваем весь репозиторий
+        log.Info("DownloadFolder: Downloading entire repository")
+    } else {
+        // Verify it's a directory
+        entry, err := commit.GetTreeEntryByPath(decodedPath)
+        if err != nil {
+            log.Error("GetTreeEntryByPath failed for %q in commit %s: %v", decodedPath, commit.ID.String(), err)
+            
+            if git.IsErrNotExist(err) {
+                ctx.NotFound(fmt.Errorf("path not found: %s", decodedPath))
+            } else {
+                ctx.ServerError("GetTreeEntryByPath", err)
+            }
+            return
         }
-        return
-    }
 
-    if !entry.IsDir() {
-        ctx.NotFound(fmt.Errorf("path is not a directory: %s", decodedPath))
-        return
-    }
+        if !entry.IsDir() {
+            ctx.NotFound(fmt.Errorf("path is not a directory: %s", decodedPath))
+            return
+        }
 
-    log.Info("DownloadFolder: Found directory entry: %s", entry.Name())
+        log.Info("DownloadFolder: Found directory entry: %s", entry.Name())
+    }
 
     // Set download headers
     folderName := path.Base(decodedPath)
@@ -258,8 +285,17 @@ func DownloadFolder(ctx *context.Context) {
 
 // addFolderToZip recursively adds folder contents to ZIP archive
 func addFolderToZip(zipWriter *zip.Writer, commit *git.Commit, treePath string, zipPath string) error {
-    // Get the tree for this path
-    tree, err := commit.SubTree(treePath)
+    var tree *git.Tree
+    var err error
+    
+    if treePath == "" {
+        // Получаем корневое дерево
+        tree, err = commit.Tree()
+    } else {
+        // Получаем дерево для указанного пути
+        tree, err = commit.SubTree(treePath)
+    }
+    
     if err != nil {
         return err
     }
@@ -271,7 +307,13 @@ func addFolderToZip(zipWriter *zip.Writer, commit *git.Commit, treePath string, 
     }
 
     for _, entry := range entries {
-        fullPath := path.Join(treePath, entry.Name())
+        var fullPath string
+        if treePath == "" {
+            fullPath = entry.Name()
+        } else {
+            fullPath = path.Join(treePath, entry.Name())
+        }
+        
         zipEntryPath := path.Join(zipPath, entry.Name())
         
         if entry.IsDir() {
