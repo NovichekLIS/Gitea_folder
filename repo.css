@@ -2068,177 +2068,116 @@ tbody.commit-list {
 }
 
 
-/* 
- * Стили для выпадающего меню скачивания папок
- * Добавлено для поддержки скачивания папок в разных форматах
- */
-
-/* Основной контейнер выпадающего меню */
 .download-folder-dropdown {
     display: inline-block;
     position: relative;
-    margin-right: 4px;
+    margin-right: 8px;
     vertical-align: middle;
 }
 
-/* Кнопка-триггер (иконка стрелки вниз) */
 .download-folder-dropdown .dropdown-toggle {
     background: none;
-    border: none;
-    padding: 2px 4px;
+    border: 1px solid transparent;
+    padding: 4px 6px;
     cursor: pointer;
     font-size: 14px;
-    color: var(--color-text-secondary, #6c757d);
-    text-decoration: none;
+    color: #586069;
     line-height: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     border-radius: 3px;
     transition: all 0.2s ease;
 }
 
-/* Состояния кнопки */
 .download-folder-dropdown .dropdown-toggle:hover {
-    color: var(--color-primary, #0366d6);
-    background-color: var(--color-bg-secondary, #f6f8fa);
+    color: #0366d6;
+    background-color: #f6f8fa;
+    border-color: #e1e4e8;
 }
 
-.download-folder-dropdown .dropdown-toggle:focus {
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb, 3, 102, 214), 0.3);
-}
-
-/* Выпадающее меню */
 .download-folder-dropdown .dropdown-menu {
     display: none;
     position: absolute;
     top: 100%;
     left: 0;
-    background-color: var(--color-bg-primary, #ffffff);
-    min-width: 180px;
+    background: #ffffff;
+    min-width: 200px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
     z-index: 1000;
-    border: 1px solid var(--color-border-primary, #e1e4e8);
+    border: 1px solid #e1e4e8;
     border-radius: 6px;
-    padding: 6px 0;
+    padding: 8px 0;
     margin-top: 4px;
-    animation: fadeIn 0.2s ease;
 }
 
-/* Анимация появления */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-8px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Показываем меню при наведении */
 .download-folder-dropdown:hover .dropdown-menu {
     display: block;
 }
 
-/* Для мобильных устройств - показываем меню при фокусе */
-.download-folder-dropdown:focus-within .dropdown-menu {
-    display: block;
+#repo-files-table,
+.repo-file-item,
+.repo-file-cell.name {
+    position: static !important;
+    overflow: visible !important;
 }
 
-/* Элементы меню */
 .download-folder-dropdown .dropdown-item {
     display: flex;
     align-items: center;
     padding: 8px 16px;
-    color: var(--color-text-primary, #24292e);
+    color: #24292e;
     text-decoration: none;
     font-size: 14px;
-    line-height: 1.4;
+    line-height: 1.5;
+    white-space: nowrap;
     transition: all 0.2s ease;
-    border: none;
-    background: none;
-    width: 100%;
-    text-align: left;
-    cursor: pointer;
 }
 
-/* Состояния элементов меню */
 .download-folder-dropdown .dropdown-item:hover {
-    background-color: var(--color-bg-secondary, #f6f8fa);
-    color: var(--color-primary, #0366d6);
+    background-color: #f6f8fa;
+    color: #0366d6;
 }
 
-.download-folder-dropdown .dropdown-item:focus {
-    outline: none;
-    background-color: var(--color-bg-secondary, #f6f8fa);
-}
-
-/* Иконки в меню */
 .download-folder-dropdown .dropdown-item i {
     margin-right: 10px;
     width: 16px;
-    height: 16px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-text-tertiary, #6a737d);
+    text-align: center;
+    color: #6a737d;
 }
 
 .download-folder-dropdown .dropdown-item:hover i {
-    color: var(--color-primary, #0366d6);
+    color: #0366d6;
 }
 
-/* Разделитель */
-.download-folder-dropdown .dropdown-divider {
-    height: 1px;
-    margin: 6px 0;
-    background-color: var(--color-border-primary, #e1e4e8);
-    border: none;
-}
 
-/* Индикатор выбора по умолчанию */
-.download-folder-dropdown .dropdown-item.default {
-    font-weight: 500;
-    color: var(--color-primary, #0366d6);
-}
-
-/* Адаптивность для мобильных устройств */
 @media (max-width: 768px) {
     .download-folder-dropdown .dropdown-menu {
         position: fixed;
-        top: auto;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        width: 100%;
-        max-width: 100%;
-        border-radius: 12px 12px 0 0;
-        margin-top: 0;
-        box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
+        max-width: 300px;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 99999;
     }
     
-    .download-folder-dropdown .dropdown-item {
-        padding: 12px 20px;
-        font-size: 16px;
+    .download-folder-dropdown:hover::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 99998;
     }
 }
 
-/* Интеграция с существующими стилями Gitea */
-.repo-file-cell.name {
+#repo-files-table {
+    overflow: visible !important;
     position: relative;
-}
-
-/* Убедимся, что выпадающее меню не ломает существующую верстку */
-.repo-file-item {
-    position: relative;
-    z-index: 1;
-}
-
-.repo-file-item:hover {
-    z-index: 100;
 }
