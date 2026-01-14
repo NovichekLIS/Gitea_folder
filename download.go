@@ -173,33 +173,46 @@ func DownloadByIDOrLFS(ctx *context.Context) {
 
 // DownloadFolder download a folder as archive in specified format
 func DownloadFolder(ctx *context.Context) {
-    // Получаем формат и путь из параметров маршрута
-    format := ctx.PathParam("format")
-    var treePath string
+    // Получаем полный путь из параметра маршрута
+    treePath := ctx.PathParam("*")
     
-    // Если формат не указан, используем zip по умолчанию
-    if format == "" {
+    // Определяем формат из URL пути
+    var format string
+    fullPath := ctx.Req.URL.Path
+    
+    // Извлекаем формат из URL
+    if strings.Contains(fullPath, "/download/folder/zip/") {
         format = "zip"
-        // Пробуем получить путь из параметра "*"
-        treePath = ctx.PathParam("*")
-    } else {
-        // Формат указан, получаем путь из "*"
-        treePath = ctx.PathParam("*")
-    }
-    
-    // Если путь все еще пустой, проверяем другие варианты
-    if treePath == "" {
-        treePath = ctx.Req.URL.Query().Get("path")
+        // Удаляем префикс "/download/folder/zip/" из пути
+        prefix := "/download/folder/zip/"
+        if idx := strings.Index(fullPath, prefix); idx != -1 {
+            treePath = fullPath[idx+len(prefix):]
+        }
+    } else if strings.Contains(fullPath, "/download/folder/tar.gz/") {
+        format = "tar.gz"
+        prefix := "/download/folder/tar.gz/"
+        if idx := strings.Index(fullPath, prefix); idx != -1 {
+            treePath = fullPath[idx+len(prefix):]
+        }
+    } else if strings.Contains(fullPath, "/download/folder/tar/") {
+        format = "tar"
+        prefix := "/download/folder/tar/"
+        if idx := strings.Index(fullPath, prefix); idx != -1 {
+            treePath = fullPath[idx+len(prefix):]
+        }
+    } else if strings.Contains(fullPath, "/download/folder/") {
+        format = "zip" // по умолчанию
+        prefix := "/download/folder/"
+        if idx := strings.Index(fullPath, prefix); idx != -1 {
+            treePath = fullPath[idx+len(prefix):]
+        }
     }
     
     if treePath == "" {
         treePath = "."
     }
     
-    // Нормализуем формат
-    format = normalizeFormat(format)
-    
-    log.Info("DownloadFolder: format=%q, raw treePath=%q", format, treePath)
+    log.Info("DownloadFolder: format=%q, raw treePath=%q, fullPath=%q", format, treePath, fullPath)
     
     // URL decode the path
     decodedPath, err := url.PathUnescape(treePath)
@@ -274,7 +287,7 @@ func DownloadFolder(ctx *context.Context) {
     switch format {
     case "tar":
         fileExt = "tar"
-    case "tar.gz", "tgz":
+    case "tar.gz":
         fileExt = "tar.gz"
     default: // zip
         fileExt = "zip"
@@ -286,7 +299,7 @@ func DownloadFolder(ctx *context.Context) {
     switch format {
     case "tar":
         ctx.Resp.Header().Set("Content-Type", "application/x-tar")
-    case "tar.gz", "tgz":
+    case "tar.gz":
         ctx.Resp.Header().Set("Content-Type", "application/gzip")
     default: // zip
         ctx.Resp.Header().Set("Content-Type", "application/zip")
@@ -298,7 +311,7 @@ func DownloadFolder(ctx *context.Context) {
     switch format {
     case "tar":
         err = createTarArchive(ctx.Resp, commit, decodedPath, false)
-    case "tar.gz", "tgz":
+    case "tar.gz":
         err = createTarArchive(ctx.Resp, commit, decodedPath, true)
     default: // zip
         err = createZipArchive(ctx.Resp, commit, decodedPath)
