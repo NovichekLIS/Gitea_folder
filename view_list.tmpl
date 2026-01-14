@@ -1,17 +1,3 @@
-{{/* В начале шаблона извлекаем имя ветки */}}
-{{$currentBranch := ""}}
-{{if $.BranchLink}}
-    {{/* BranchLink: /username/repo/src/branch/BRANCH/path */}}
-    {{$parts := StringUtils.Split $.BranchLink "/"}}
-    {{range $i, $part := $parts}}
-        {{if eq $part "branch"}}
-            {{if lt (Eval $i "+" 1) (len $parts)}}
-                {{$currentBranch = index $parts (Eval $i "+" 1)}}
-            {{end}}
-        {{end}}
-    {{end}}
-{{end}}
-
 {{/* use grid layout, still use the old ID because there are many other CSS styles depending on this ID */}}
 <div id="repo-files-table" {{if .HasFilesWithoutLatestCommit}}hx-indicator="#repo-files-table .repo-file-cell.message" hx-trigger="load" hx-swap="morph" hx-post="{{.LastCommitLoaderURL}}"{{end}}>
 	<div class="repo-file-line repo-file-last-commit">
@@ -45,13 +31,27 @@
 					{{if $entry.IsDir}}
 						{{$subJumpablePathName := $entry.GetSubJumpablePathName}}
 						
-						{{/* Выпадающее меню для скачивания папки */}}
-						<div class="download-folder-dropdown">
-							<button class="dropdown-toggle" aria-haspopup="true" aria-expanded="false" data-tooltip-content='{{ctx.Locale.Tr "repo.download_folder"}}' title='{{ctx.Locale.Tr "repo.download_folder"}}'>
-								{{svg "octicon-download" 16}}
-							</button>
-							<div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-								{{/* Формируем базовый путь для скачивания */}}
+						{{/* Extract current branch from BranchLink */}}
+						{{$currentBranch := ""}}
+						{{if $.BranchLink}}
+							{{$parts := StringUtils.Split $.BranchLink "/"}}
+							{{range $i, $part := $parts}}
+								{{if eq $part "branch"}}
+									{{if lt (Eval $i "+" 1) (len $parts)}}
+										{{$currentBranch = index $parts (Eval $i "+" 1)}}
+									{{end}}
+								{{end}}
+							{{end}}
+						{{end}}
+						
+						{{/* Folder download dropdown menu with unified style */}}
+						<button class="ui dropdown basic compact jump button repo-download-folder-inline" 
+								data-tooltip-content='{{ctx.Locale.Tr "repo.download_folder"}}'
+								title='{{ctx.Locale.Tr "repo.download_folder"}}'>
+							{{svg "octicon-download" 16}}
+							{{svg "octicon-triangle-down" 14 "dropdown icon"}}
+							<div class="menu">
+								{{/* Build download path */}}
 								{{$downloadPath := ""}}
 								{{if $.TreePath}}
 									{{$downloadPath = printf "%s/%s" $.TreePath $entry.Name}}
@@ -60,23 +60,27 @@
 								{{end}}
 								{{$escapedPath := PathEscapeSegments $downloadPath}}
 								
-								{{/* Формируем URL с веткой */}}
+								{{/* Build URL with branch */}}
 								{{$branchPrefix := ""}}
 								{{if $currentBranch}}
 									{{$branchPrefix = printf "/branch/%s/" $currentBranch}}
 								{{end}}
 								
-								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=zip">
-									<i class="octicon octicon-file-zip"></i> ZIP
+								<a class="item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=zip">
+									{{svg "octicon-file-zip" 16 "tw-mr-2"}}ZIP
 								</a>
-								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=tar">
-									<i class="octicon octicon-file-binary"></i> TAR
+								<a class="item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=tar">
+									{{svg "octicon-file-binary" 16 "tw-mr-2"}}TAR
 								</a>
-								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=tar.gz">
-									<i class="octicon octicon-file-zip"></i> TAR.GZ
+								<a class="item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=tar.gz">
+									{{svg "octicon-file-zip" 16 "tw-mr-2"}}TAR.GZ
+								</a>
+								<div class="divider"></div>
+								<a class="item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}">
+									{{svg "octicon-download" 16 "tw-mr-2"}}{{ctx.Locale.Tr "repo.download_default"}}
 								</a>
 							</div>
-						</div>
+						</button>
 						
 						<a class="entry-name" href="{{$.TreeLink}}/{{PathEscapeSegments $subJumpablePathName}}" title="{{$subJumpablePathName}}">
 							{{$subJumpablePathFields := StringUtils.Split $subJumpablePathName "/"}}
@@ -110,121 +114,117 @@
 </div>
 
 <style>
-/* Исправленные стили для выпадающего меню */
-.download-folder-dropdown {
-    display: inline-block;
-    position: relative;
-    margin-right: 8px;
-    vertical-align: middle;
-}
-
-.download-folder-dropdown .dropdown-toggle {
-    background: none;
-    border: 1px solid transparent;
-    padding: 4px 6px;
-    cursor: pointer;
-    font-size: 14px;
-    color: #586069;
-    line-height: 1;
+/* Inline download folder button styles (matches view_home.tmpl style) */
+.repo-download-folder-inline {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 3px;
+    padding: 4px 6px;
+    margin-right: 8px;
+    font-size: 14px;
+    color: #586069;
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
     transition: all 0.2s ease;
+    min-width: 32px;
+    height: 24px;
+    vertical-align: middle;
 }
 
-.download-folder-dropdown .dropdown-toggle:hover {
+.repo-download-folder-inline:hover {
     color: #0366d6;
     background-color: #f6f8fa;
     border-color: #e1e4e8;
 }
 
-.download-folder-dropdown .dropdown-menu {
+.repo-download-folder-inline .dropdown.icon {
+    margin-left: 2px;
+    opacity: 0.8;
+}
+
+/* Dropdown menu styles (matches view_home.tmpl style) */
+.repo-download-folder-inline .menu {
     display: none;
     position: absolute;
     top: 100%;
     left: 0;
     background: #ffffff;
-    min-width: 200px;
+    min-width: 180px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
     z-index: 1000;
     border: 1px solid #e1e4e8;
     border-radius: 6px;
-    padding: 8px 0;
+    padding: 6px 0;
     margin-top: 4px;
 }
 
-.download-folder-dropdown:hover .dropdown-menu {
+.repo-download-folder-inline:hover .menu {
     display: block;
 }
 
-/* Ключевое исправление: убираем ограничения на переполнение */
-#repo-files-table,
-.repo-file-item,
-.repo-file-cell.name {
-    position: static !important;
-    overflow: visible !important;
-}
-
-.download-folder-dropdown .dropdown-item {
+.repo-download-folder-inline .menu .item {
     display: flex;
     align-items: center;
-    padding: 8px 16px;
+    padding: 8px 12px;
     color: #24292e;
     text-decoration: none;
     font-size: 14px;
-    line-height: 1.5;
+    line-height: 1.4;
     white-space: nowrap;
     transition: all 0.2s ease;
 }
 
-.download-folder-dropdown .dropdown-item:hover {
+.repo-download-folder-inline .menu .item:hover {
     background-color: #f6f8fa;
     color: #0366d6;
 }
 
-.download-folder-dropdown .dropdown-item i {
-    margin-right: 10px;
-    width: 16px;
-    text-align: center;
+.repo-download-folder-inline .menu .item svg {
+    margin-right: 8px;
     color: #6a737d;
 }
 
-.download-folder-dropdown .dropdown-item:hover i {
+.repo-download-folder-inline .menu .item:hover svg {
     color: #0366d6;
 }
 
-/* Для мобильных устройств */
-@media (max-width: 768px) {
-    .download-folder-dropdown .dropdown-menu {
-        position: fixed;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 90%;
-        max-width: 300px;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        z-index: 99999;
-    }
-    
-    /* Добавляем затемнение фона на мобильных */
-    .download-folder-dropdown:hover::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 99998;
-    }
+.repo-download-folder-inline .menu .divider {
+    height: 1px;
+    margin: 6px 0;
+    background-color: #e1e4e8;
+    border: none;
 }
 
-/* Важно: убедитесь, что таблица не ограничивает видимость */
-#repo-files-table {
-    overflow: visible !important;
+/* Ensure proper positioning */
+.repo-file-cell.name {
     position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 32px;
+}
+
+.repo-file-item {
+    position: relative;
+}
+
+.repo-file-item:hover {
+    z-index: 1000;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .repo-download-folder-inline {
+        padding: 3px 4px;
+        min-width: 28px;
+        height: 22px;
+        margin-right: 4px;
+    }
+    
+    .repo-download-folder-inline .dropdown.icon {
+        width: 12px;
+        height: 12px;
+    }
 }
 </style>
