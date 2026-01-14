@@ -93,32 +93,35 @@
 </div>
 
 <style>
-/* Простые и гарантированно работающие стили для выпадающего меню */
+/* Исправленные стили для выпадающего меню */
 .download-folder-dropdown {
     display: inline-block;
     position: relative;
-    margin-right: 4px;
+    margin-right: 8px;
+    vertical-align: middle;
 }
 
 .download-folder-dropdown .dropdown-toggle {
     background: none;
-    border: none;
-    padding: 2px 4px;
+    border: 1px solid transparent;
+    padding: 4px 6px;
     cursor: pointer;
     font-size: 14px;
-    color: #6c757d;
+    color: #586069;
     line-height: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     border-radius: 3px;
+    transition: all 0.2s ease;
 }
 
 .download-folder-dropdown .dropdown-toggle:hover {
     color: #0366d6;
     background-color: #f6f8fa;
+    border-color: #e1e4e8;
 }
 
 .download-folder-dropdown .dropdown-menu {
@@ -126,14 +129,14 @@
     position: absolute;
     top: 100%;
     left: 0;
-    background: white;
-    min-width: 180px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    background: #ffffff;
+    min-width: 200px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
     z-index: 1000;
-    border: 1px solid #d1d5da;
+    border: 1px solid #e1e4e8;
     border-radius: 6px;
     padding: 8px 0;
-    margin-top: 2px;
+    margin-top: 4px;
 }
 
 .download-folder-dropdown:hover .dropdown-menu {
@@ -141,13 +144,15 @@
 }
 
 .download-folder-dropdown .dropdown-item {
-    display: block;
+    display: flex;
+    align-items: center;
     padding: 8px 16px;
     color: #24292e;
     text-decoration: none;
     font-size: 14px;
     line-height: 1.5;
     white-space: nowrap;
+    transition: all 0.2s ease;
 }
 
 .download-folder-dropdown .dropdown-item:hover {
@@ -156,15 +161,21 @@
 }
 
 .download-folder-dropdown .dropdown-item i {
-    margin-right: 8px;
+    margin-right: 10px;
     width: 16px;
     text-align: center;
+    color: #6a737d;
+}
+
+.download-folder-dropdown .dropdown-item:hover i {
+    color: #0366d6;
 }
 
 .download-folder-dropdown .dropdown-divider {
     height: 1px;
     margin: 8px 0;
     background-color: #e1e4e8;
+    border: none;
 }
 
 .download-folder-dropdown .dropdown-item.default {
@@ -172,12 +183,38 @@
     color: #0366d6;
 }
 
-/* Убедимся, что меню не перекрывается другими элементами */
+/* Убедимся, что меню правильно позиционируется */
+.repo-file-cell.name {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 32px;
+}
+
 .repo-file-item {
     position: relative;
 }
 
 .repo-file-item:hover {
-    z-index: 100;
+    z-index: 1000;
+}
+
+/* Для мобильных устройств */
+@media (max-width: 768px) {
+    .download-folder-dropdown .dropdown-menu {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
+        max-width: 300px;
+    }
+}
+
+/* Отладка - можно убрать после тестирования */
+.download-folder-dropdown {
+    /* border: 1px solid red; */
+}
+.download-folder-dropdown .dropdown-menu {
+    /* border: 1px solid blue; */
 }
 </style>
