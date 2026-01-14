@@ -46,7 +46,6 @@
 		{{/* Compact download folder button (icon only) */}}
 		<button class="ui dropdown basic compact jump button repo-download-folder-compact" 
 				data-tooltip-content="{{ctx.Locale.Tr "repo.download_current_folder"}}"
-				{{if not .Repository.CanEnableEditor}}disabled{{end}}>
 			{{svg "octicon-download" 16}}
 			{{svg "octicon-triangle-down" 14 "dropdown icon"}}
 			<div class="menu">
