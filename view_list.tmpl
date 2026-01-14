@@ -45,15 +45,10 @@
 								{{end}}
 								{{$escapedPath := PathEscapeSegments $downloadPath}}
 								
-								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder/zip/{{$escapedPath}}">
-									<i class="octicon octicon-file-zip"></i> ZIP
-								</a>
-								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder/tar/{{$escapedPath}}">
-									<i class="octicon octicon-file-binary"></i> TAR
-								</a>
-								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder/tar.gz/{{$escapedPath}}">
-									<i class="octicon octicon-file-zip"></i> TAR.GZ
-								</a>
+								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder/{{$escapedPath}}?format=zip">ZIP</a>
+								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder/{{$escapedPath}}?format=tar">TAR</a>
+								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder/{{$escapedPath}}?format=tar.gz">TAR.GZ</a>
+
 							</div>
 						</div>
 						
