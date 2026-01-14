@@ -1,3 +1,17 @@
+{{/* В начале шаблона извлекаем имя ветки */}}
+{{$currentBranch := ""}}
+{{if $.BranchLink}}
+    {{/* BranchLink: /username/repo/src/branch/BRANCH/path */}}
+    {{$parts := StringUtils.Split $.BranchLink "/"}}
+    {{range $i, $part := $parts}}
+        {{if eq $part "branch"}}
+            {{if lt (Eval $i "+" 1) (len $parts)}}
+                {{$currentBranch = index $parts (Eval $i "+" 1)}}
+            {{end}}
+        {{end}}
+    {{end}}
+{{end}}
+
 {{/* use grid layout, still use the old ID because there are many other CSS styles depending on this ID */}}
 <div id="repo-files-table" {{if .HasFilesWithoutLatestCommit}}hx-indicator="#repo-files-table .repo-file-cell.message" hx-trigger="load" hx-swap="morph" hx-post="{{.LastCommitLoaderURL}}"{{end}}>
 	<div class="repo-file-line repo-file-last-commit">
@@ -11,7 +25,8 @@
 		TreePath: {{.TreePath}}<br>
 		RepoLink: {{.RepoLink}}<br>
 		BranchLink: {{.BranchLink}}<br>
-		TreeLink: {{.TreeLink}}
+		TreeLink: {{.TreeLink}}<br>
+		CurrentBranch: {{$currentBranch}}
 	</div>
 	
 	{{$.FileIconPoolHTML}}
@@ -55,17 +70,23 @@
 								{{end}}
 								{{$escapedPath := PathEscapeSegments $downloadPath}}
 								
-								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder/{{$escapedPath}}?format=zip">
+								{{/* Формируем URL с веткой */}}
+								{{$branchPrefix := ""}}
+								{{if $currentBranch}}
+									{{$branchPrefix = printf "/branch/%s/" $currentBranch}}
+								{{end}}
+								
+								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=zip">
 									<i class="octicon octicon-file-zip"></i> ZIP
 								</a>
-								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder/{{$escapedPath}}?format=tar">
+								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=tar">
 									<i class="octicon octicon-file-binary"></i> TAR
 								</a>
-								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder/{{$escapedPath}}?format=tar.gz">
+								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=tar.gz">
 									<i class="octicon octicon-file-zip"></i> TAR.GZ
 								</a>
 								<div class="dropdown-divider"></div>
-								<a class="dropdown-item default" href="{{$.RepoLink}}/download/folder/{{$escapedPath}}">
+								<a class="dropdown-item default" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}">
 									<i class="octicon octicon-download"></i> {{ctx.Locale.Tr "repo.download_default"}}
 								</a>
 							</div>
