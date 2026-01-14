@@ -286,3 +286,62 @@ func DownloadFolder(ctx *context.Context) {
 		return
 	}
 }
+
+// createGitArchiveBuffered создает архив через git archive с буферизацией для больших файлов
+func createGitArchiveBuffered(w io.Writer, repoPath string, commitHash string, treePath string, format string) error {
+	// Проверяем доступность git
+	if _, err := exec.LookPath("git"); err != nil {
+		return fmt.Errorf("git not found: %v", err)
+	}
+	
+	// Определяем формат
+	var formatArg string
+	switch strings.ToLower(format) {
+	case "tar":
+		formatArg = "tar"
+	case "tar.gz", "tgz", "gz":
+		formatArg = "tar.gz"
+	default:
+		formatArg = "zip"
+	}
+	
+	// Создаем команду
+	args := []string{"archive", "--format=" + formatArg, commitHash}
+	if treePath != "" && treePath != "." {
+		args = append(args, strings.TrimPrefix(treePath, "/"))
+	}
+	
+	cmd := exec.Command("git", args...)
+	cmd.Dir = repoPath
+	
+	// Получаем stdout команды
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("failed to create stdout pipe: %v", err)
+	}
+	
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	
+	// Запускаем команду
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start git: %v", err)
+	}
+	
+	// Копируем данные с буферизацией
+	_, copyErr := io.Copy(w, stdout)
+	
+	// Ждем завершения команды
+	waitErr := cmd.Wait()
+	
+	// Обрабатываем ошибки
+	if copyErr != nil {
+		return fmt.Errorf("failed to copy archive data: %v", copyErr)
+	}
+	
+	if waitErr != nil {
+		return fmt.Errorf("git archive failed: %v\nstderr: %s", waitErr, stderr.String())
+	}
+	
+	return nil
+}
