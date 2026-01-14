@@ -1,3 +1,6 @@
+--- a/templates/repo/view_list.tmpl
++++ b/templates/repo/view_list.tmpl
+@@ -XXX,XXX +XXX,XXX @@
  				{{if $entry.IsSubModule}}
 					{{$submoduleLink := $submoduleFile.SubmoduleWebLinkTree ctx}}
 					{{if $submoduleLink}}
@@ -38,7 +41,6 @@
 									{{$downloadPath = $entry.Name}}
 								{{end}}
 								{{$escapedPath := PathEscapeSegments $downloadPath}}
-								
 								{{/* Build URL with branch */}}
 								{{$branchPrefix := ""}}
 								{{if $currentBranch}}
@@ -54,6 +56,7 @@
 								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=tar.gz">
 									<i class="octicon octicon-file-zip"></i> TAR.GZ
 								</a>
+
 							</div>
 						</div>
 						
