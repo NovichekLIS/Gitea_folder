@@ -1,0 +1,43 @@
+--- a/templates/repo/view_content.tmpl
++++ b/templates/repo/view_content.tmpl
+@@ -XXX,XXX +XXX,XXX @@
+ 	{{if and .RefFullName.IsBranch (not .IsViewFile)}}
++		<button class="ui dropdown basic compact jump button repo-download-folder-compact" 
++				data-tooltip-content="{{ctx.Locale.Tr "repo.download_current_folder"}}">
++			{{svg "octicon-download" 16}}
++			{{svg "octicon-triangle-down" 14 "dropdown icon"}}
++			<div class="menu">
++				{{/* Build download path */}}
++				{{$downloadPath := .TreePath}}
++				{{$escapedPath := PathEscapeSegments $downloadPath}}
++				{{$branchPrefix := printf "/branch/%s/" .BranchName}}
++				
++				<a class="item" href="{{.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=zip">
++					{{svg "octicon-file-zip" 16 "tw-mr-2"}}ZIP
++				</a>
++				<a class="item" href="{{.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=tar">
++					{{svg "octicon-file-binary" 16 "tw-mr-2"}}TAR
++				</a>
++				<a class="item" href="{{.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=tar.gz">
++					{{svg "octicon-file-zip" 16 "tw-mr-2"}}TAR.GZ
++				</a>
++		</button>
++		
+ 		<button class="ui dropdown basic compact jump button repo-add-file" {{if not .Repository.CanEnableEditor}}disabled{{end}}>
+ 			{{ctx.Locale.Tr "repo.editor.add_file"}}
+ 			{{svg "octicon-triangle-down" 14 "dropdown icon"}}
+ 			<div class="menu">
+ 				<a class="item" href="{{.RepoLink}}/_new/{{.BranchName | PathEscapeSegments}}/{{.TreePath | PathEscapeSegments}}">
+ 					{{ctx.Locale.Tr "repo.editor.new_file"}}
+ 				</a>
+ 				{{if .RepositoryUploadEnabled}}
+ 				<a class="item" href="{{.RepoLink}}/_upload/{{.BranchName | PathEscapeSegments}}/{{.TreePath | PathEscapeSegments}}">
+ 					{{ctx.Locale.Tr "repo.editor.upload_file"}}
+ 				</a>
+ 				{{end}}
+ 				<a class="item" href="{{.RepoLink}}/_diffpatch/{{.BranchName | PathEscapeSegments}}/{{.TreePath | PathEscapeSegments}}">
+ 					{{ctx.Locale.Tr "repo.editor.patch"}}
+ 				</a>
+ 			</div>
+ 		</button>
+ 	{{end}}
