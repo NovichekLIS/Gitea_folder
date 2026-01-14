@@ -277,12 +277,14 @@ func DownloadFolder(ctx *context.Context) {
 
     // Для пустого пути (скачивание всего репозитории) проверяем, что коммит существует
     if decodedPath != "" {
-        // Пробуем получить поддерево - это более надежный способ проверить существование директории
-        _, err := commit.SubTree(decodedPath)
+        // Verify it's a directory
+        entry, err := commit.GetTreeEntryByPath(decodedPath)
         if err != nil {
-            log.Error("SubTree failed for %q in commit %s: %v", decodedPath, commit.ID.String(), err)
+            log.Error("GetTreeEntryByPath failed for %q in commit %s: %v", decodedPath, commit.ID.String(), err)
             
-            // Для отладки: получаем список файлов в корне
+            // Проверяем, может быть путь указан неправильно
+            // Получаем список всех файлов в корне для отладки
+            // commit.Tree - это значение, а не указатель, поэтому проверяем через ListEntries
             entries, listErr := commit.Tree.ListEntries()
             if listErr == nil {
                 var availablePaths []string
@@ -295,12 +297,17 @@ func DownloadFolder(ctx *context.Context) {
             if git.IsErrNotExist(err) {
                 ctx.NotFound(fmt.Errorf("path '%s' not found in commit %s", decodedPath, commit.ID.String()[:7]))
             } else {
-                ctx.ServerError("CheckDirectory", err)
+                ctx.ServerError("GetTreeEntryByPath", err)
             }
             return
         }
-        
-        log.Info("DownloadFolder: Path %s is a valid directory", decodedPath)
+
+        if !entry.IsDir() {
+            ctx.NotFound(fmt.Errorf("path '%s' is not a directory", decodedPath))
+            return
+        }
+
+        log.Info("DownloadFolder: Found directory entry: %s", entry.Name())
     }
 
     // Set download headers
