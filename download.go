@@ -173,34 +173,24 @@ func DownloadByIDOrLFS(ctx *context.Context) {
 
 // DownloadFolder download a folder as archive in specified format
 func DownloadFolder(ctx *context.Context) {
-    // Получаем полный URL путь
-    fullPath := ctx.Req.URL.Path
-    log.Info("DownloadFolder START: fullPath=%q", fullPath)
-    
     // Получаем путь из параметра маршрута
     treePath := ctx.PathParam("*")
-    log.Info("DownloadFolder: treePath from param='%s'", treePath)
     
     // Получаем формат из query параметра
     format := ctx.Req.URL.Query().Get("format")
     if format == "" {
         format = "zip" // по умолчанию
     }
-    log.Info("DownloadFolder: format=%q", format)
+    
+    log.Info("DownloadFolder: path=%q, format=%q", treePath, format)
     
     // Если путь пустой, используем текущий путь из контекста
-    if treePath == "" {
-        // Пробуем получить путь из контекста репозитория
-        if ctx.Repo.TreePath != "" {
-            treePath = ctx.Repo.TreePath
-            log.Info("DownloadFolder: using TreePath from context='%s'", treePath)
-        } else {
-            treePath = "."
-            log.Info("DownloadFolder: using default path='.'")
-        }
+    if treePath == "" && ctx.Repo.TreePath != "" {
+        treePath = ctx.Repo.TreePath
     }
-    
-    log.Info("DownloadFolder: raw treePath=%q", treePath)
+    if treePath == "" {
+        treePath = "."
+    }
     
     // URL decode the path
     decodedPath, err := url.PathUnescape(treePath)
@@ -219,136 +209,84 @@ func DownloadFolder(ctx *context.Context) {
     log.Info("DownloadFolder: decodedPath=%q", decodedPath)
     
     // ВАЖНО: Проверяем, что у нас есть репозиторий
-    if ctx.Repo.Repository == nil {
-        log.Error("DownloadFolder: Repository is nil")
+    if ctx.Repo.Repository == nil || ctx.Repo.GitRepo == nil {
         ctx.NotFound(fmt.Errorf("repository not found"))
         return
     }
     
-    if ctx.Repo.GitRepo == nil {
-        log.Error("DownloadFolder: GitRepo is nil")
-        ctx.NotFound(fmt.Errorf("git repository not found"))
-        return
-    }
-    
-    log.Info("DownloadFolder: Repository name=%s", ctx.Repo.Repository.Name)
-    log.Info("DownloadFolder: Repository default branch=%s", ctx.Repo.Repository.DefaultBranch)
-    
-    // ВАЖНО: Получаем ТЕКУЩУЮ ветку из контекста!
-    // ctx.Repo может содержать информацию о текущей ветке
+    // Получаем коммит
+    var commit *git.Commit
     var branchName string
     
-    // Пробуем получить ветку из разных источников
-    if ctx.Repo.BranchName != "" {
-        branchName = ctx.Repo.BranchName
-        log.Info("DownloadFolder: Using BranchName from context: %s", branchName)
-    } else if ctx.Repo.RefName != "" {
-        // Проверяем, является ли RefName веткой
-        if strings.HasPrefix(ctx.Repo.RefName, "refs/heads/") {
-            branchName = strings.TrimPrefix(ctx.Repo.RefName, "refs/heads/")
-            log.Info("DownloadFolder: Using RefName (converted): %s", branchName)
-        } else {
-            branchName = ctx.Repo.RefName
-            log.Info("DownloadFolder: Using RefName: %s", branchName)
-        }
-    } else {
-        // Используем ветку по умолчанию
-        branchName = ctx.Repo.Repository.DefaultBranch
-        if branchName == "" {
-            branchName = "main"
-        }
-        log.Info("DownloadFolder: No branch in context, using default: %s", branchName)
-    }
-    
-    // Получаем коммит из ТЕКУЩЕЙ ветки
-    var commit *git.Commit
+    // Способ 1: Коммит из контекста (если middleware установил)
     if ctx.Repo.Commit != nil {
         commit = ctx.Repo.Commit
         log.Info("DownloadFolder: Using commit from context: %s", commit.ID.String())
-    } else {
-        log.Info("DownloadFolder: Getting commit for branch: %s", branchName)
         
-        commit, err = ctx.Repo.GitRepo.GetCommit(branchName)
-        if err != nil {
-            log.Error("DownloadFolder: Failed to get commit for branch %s: %v", branchName, err)
-            
-            // Пробуем получить коммит по тегу или другому ref
-            log.Info("DownloadFolder: Trying to get commit as generic ref...")
-            commit, err = ctx.Repo.GitRepo.GetCommit(branchName)
-            if err != nil {
-                log.Error("DownloadFolder: Failed to get commit as ref %s: %v", branchName, err)
-                ctx.ServerError("GetCommit", err)
-                return
+        // Пытаемся определить ветку из коммита
+        // Это может быть сложно, но попробуем
+        branchName = "current" // заглушка
+    } else {
+        // Способ 2: Получаем текущую ветку из URL или контекста
+        
+        // Пробуем получить ветку из URL (если есть в пути)
+        fullPath := ctx.Req.URL.Path
+        branchName = extractBranchFromURL(fullPath)
+        
+        if branchName == "" {
+            // Используем ветку по умолчанию
+            branchName = ctx.Repo.Repository.DefaultBranch
+            if branchName == "" {
+                branchName = "main"
             }
+            log.Info("DownloadFolder: Using default branch: %s", branchName)
+        } else {
+            log.Info("DownloadFolder: Using branch from URL: %s", branchName)
         }
         
-        // Сохраняем коммит в контексте для будущих вызовов
-        ctx.Repo.Commit = commit
+        // Получаем коммит для ветки
+        var err error
+        commit, err = ctx.Repo.GitRepo.GetCommit(branchName)
+        if err != nil {
+            log.Error("DownloadFolder: Failed to get commit for %s: %v", branchName, err)
+            ctx.ServerError("GetCommit", err)
+            return
+        }
     }
     
-    if commit == nil {
-        log.Error("DownloadFolder: Commit is nil after all attempts")
-        ctx.NotFound(fmt.Errorf("commit not found"))
-        return
-    }
+    log.Info("DownloadFolder: Using commit %s (branch: %s)", commit.ID.String(), branchName)
     
-    log.Info("DownloadFolder: Using commit %s for path %s (branch: %s)", commit.ID.String(), decodedPath, branchName)
-    
-    // Для отладки: получаем список всех файлов в корне
+    // Для отладки: получаем список файлов в корне
     entries, listErr := commit.Tree.ListEntries()
     if listErr == nil {
         var availablePaths []string
         for _, e := range entries {
             availablePaths = append(availablePaths, e.Name())
         }
-        log.Info("DownloadFolder: Available paths in root (%d items): %v", len(availablePaths), availablePaths)
-    } else {
-        log.Error("DownloadFolder: Failed to list entries: %v", listErr)
+        log.Info("DownloadFolder: Available in root: %v", availablePaths)
     }
-
-    // Для пустого пути (скачивание всего репозитории) проверяем, что коммит существует
+    
+    // Проверяем существование пути
     if decodedPath != "" {
-        log.Info("DownloadFolder: Checking if path '%s' exists...", decodedPath)
-        
-        // Пробуем получить поддерево
         _, err := commit.SubTree(decodedPath)
         if err != nil {
-            log.Error("SubTree failed for %q in commit %s: %v", decodedPath, commit.ID.String(), err)
-            
-            // Также пробуем GetTreeEntryByPath для более точной ошибки
-            entry, entryErr := commit.GetTreeEntryByPath(decodedPath)
-            if entryErr == nil {
-                log.Info("DownloadFolder: Found entry via GetTreeEntryByPath: %s (IsDir: %v)", entry.Name(), entry.IsDir())
-                if !entry.IsDir() {
-                    ctx.NotFound(fmt.Errorf("path '%s' is not a directory (it's a file)", decodedPath))
-                    return
-                }
-            } else {
-                log.Error("GetTreeEntryByPath also failed: %v", entryErr)
-            }
-            
             if git.IsErrNotExist(err) {
-                ctx.NotFound(fmt.Errorf("path '%s' not found in commit %s (branch: %s)", decodedPath, commit.ID.String()[:7], branchName))
+                ctx.NotFound(fmt.Errorf("path '%s' not found in branch '%s'", decodedPath, branchName))
             } else {
                 ctx.ServerError("CheckDirectory", err)
             }
             return
         }
-        
-        log.Info("DownloadFolder: Path %s is a valid directory (verified via SubTree)", decodedPath)
-    } else {
-        log.Info("DownloadFolder: Downloading entire repository")
+        log.Info("DownloadFolder: Path %s exists", decodedPath)
     }
-
+    
     // Set download headers
     folderName := path.Base(decodedPath)
     if folderName == "" || folderName == "." || folderName == "/" {
         folderName = ctx.Repo.Repository.Name
     }
     
-    log.Info("DownloadFolder: folderName=%q", folderName)
-    
-    // Определяем расширение файла в зависимости от формата
+    // Определяем расширение файла
     var fileExt string
     switch format {
     case "tar":
@@ -363,7 +301,7 @@ func DownloadFolder(ctx *context.Context) {
     
     log.Info("DownloadFolder: archiveName=%q", archiveName)
     
-    // Устанавливаем Content-Type в зависимости от формата
+    // Устанавливаем Content-Type
     switch format {
     case "tar":
         ctx.Resp.Header().Set("Content-Type", "application/x-tar")
@@ -374,9 +312,8 @@ func DownloadFolder(ctx *context.Context) {
     }
     
     ctx.Resp.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, archiveName))
-
-    // Создаем архив в зависимости от формата
-    log.Info("DownloadFolder: Creating %s archive...", format)
+    
+    // Создаем архив
     switch format {
     case "tar":
         err = createTarArchive(ctx.Resp, commit, decodedPath, false)
@@ -387,12 +324,40 @@ func DownloadFolder(ctx *context.Context) {
     }
     
     if err != nil {
-        log.Error("Failed to create %s archive: %v", format, err)
+        log.Error("Failed to create archive: %v", err)
         ctx.ServerError("CreateArchive", err)
         return
     }
     
-    log.Info("DownloadFolder: Successfully created %s archive for %q", format, decodedPath)
+    log.Info("DownloadFolder: Successfully created %s archive for %s", format, decodedPath)
+}
+
+// extractBranchFromURL пытается извлечь имя ветки из URL
+func extractBranchFromURL(urlPath string) string {
+    // Разбиваем URL на части
+    parts := strings.Split(urlPath, "/")
+    
+    // Ищем паттерны, которые могут указывать на ветку
+    // Примеры:
+    // /username/repo/src/branch/branch-name/...
+    // /username/repo/tree/branch-name/...
+    
+    for i := 0; i < len(parts)-2; i++ {
+        if parts[i] == "src" && parts[i+1] == "branch" && i+2 < len(parts) {
+            // Нашли src/branch/branch-name
+            return parts[i+2]
+        }
+    }
+    
+    for i := 0; i < len(parts)-1; i++ {
+        if parts[i] == "tree" && i+1 < len(parts) {
+            // Нашли tree/branch-name
+            return parts[i+1]
+        }
+    }
+    
+    // Не нашли ветку в URL
+    return ""
 }
 
 // normalizeFormat нормализует название формата
