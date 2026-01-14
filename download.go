@@ -230,23 +230,56 @@ func DownloadFolder(ctx *context.Context) {
     
     log.Info("DownloadFolder: format=%q, decodedPath=%q", format, decodedPath)
     
-    // Get the commit from context (set by RepoAssignment middleware)
-    if ctx.Repo.Commit == nil {
-        // Fallback: use default branch
-        ref := ctx.Repo.Repository.DefaultBranch
-        log.Info("DownloadFolder: No commit in context, using default branch: %s", ref)
-        
-        var err error
-        ctx.Repo.Commit, err = ctx.Repo.GitRepo.GetCommit(ref)
-        if err != nil {
-            ctx.ServerError("GetCommit", err)
-            return
-        }
+    // ВАЖНО: Проверяем, что у нас есть репозиторий и git репозиторий
+    if ctx.Repo.Repository == nil {
+        log.Error("DownloadFolder: Repository is nil")
+        ctx.NotFound(fmt.Errorf("repository not found"))
+        return
     }
     
-    commit := ctx.Repo.Commit
+    if ctx.Repo.GitRepo == nil {
+        log.Error("DownloadFolder: GitRepo is nil")
+        ctx.NotFound(fmt.Errorf("git repository not found"))
+        return
+    }
+    
+    // Получаем коммит - сначала пробуем из контекста, если нет - получаем текущий коммит ветки
+    var commit *git.Commit
+    if ctx.Repo.Commit != nil {
+        commit = ctx.Repo.Commit
+        log.Info("DownloadFolder: Using commit from context: %s", commit.ID.String())
+    } else {
+        // Получаем текущий коммит из репозитория
+        // Сначала пробуем получить коммит из ссылки в контексте
+        if ctx.Repo.RefName != "" {
+            commit, err = ctx.Repo.GitRepo.GetCommit(ctx.Repo.RefName)
+            if err != nil {
+                log.Warn("DownloadFolder: Failed to get commit for ref %s: %v", ctx.Repo.RefName, err)
+            }
+        }
+        
+        // Если не получилось, используем ветку по умолчанию
+        if commit == nil {
+            ref := ctx.Repo.Repository.DefaultBranch
+            if ref == "" {
+                ref = "main"
+            }
+            log.Info("DownloadFolder: No commit in context, using default branch: %s", ref)
+            
+            commit, err = ctx.Repo.GitRepo.GetCommit(ref)
+            if err != nil {
+                log.Error("DownloadFolder: Failed to get commit for default branch %s: %v", ref, err)
+                ctx.ServerError("GetCommit", err)
+                return
+            }
+        }
+        
+        // Сохраняем коммит в контексте для будущих вызовов
+        ctx.Repo.Commit = commit
+    }
+    
     if commit == nil {
-        log.Error("DownloadFolder: Commit is nil")
+        log.Error("DownloadFolder: Commit is nil after all attempts")
         ctx.NotFound(fmt.Errorf("commit not found"))
         return
     }
@@ -260,8 +293,24 @@ func DownloadFolder(ctx *context.Context) {
         if err != nil {
             log.Error("GetTreeEntryByPath failed for %q in commit %s: %v", decodedPath, commit.ID.String(), err)
             
+            // Проверяем, может быть путь указан относительно корня репозитория
+            // Попробуем получить дерево и посмотреть что там
+            tree := commit.Tree
+            if tree != nil {
+                entries, listErr := tree.ListEntries()
+                if listErr == nil {
+                    log.Info("DownloadFolder: Available entries in root: %v", func() []string {
+                        var names []string
+                        for _, e := range entries {
+                            names = append(names, e.Name())
+                        }
+                        return names
+                    }())
+                }
+            }
+            
             if git.IsErrNotExist(err) {
-                ctx.NotFound(fmt.Errorf("path not found: %s", decodedPath))
+                ctx.NotFound(fmt.Errorf("path not found: %s (available: check logs)", decodedPath))
             } else {
                 ctx.ServerError("GetTreeEntryByPath", err)
             }
