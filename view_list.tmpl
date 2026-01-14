@@ -88,14 +88,12 @@
 	{{end}}
 </div>
 
-<style>
 /* Исправленные стили для выпадающего меню */
 .download-folder-dropdown {
     display: inline-block;
     position: relative;
     margin-right: 8px;
     vertical-align: middle;
-    z-index: 1000; /* Добавлено */
 }
 
 .download-folder-dropdown .dropdown-toggle {
@@ -113,8 +111,6 @@
     height: 24px;
     border-radius: 3px;
     transition: all 0.2s ease;
-    position: relative; /* Добавлено */
-    z-index: 1001; /* Добавлено */
 }
 
 .download-folder-dropdown .dropdown-toggle:hover {
@@ -131,35 +127,23 @@
     background: #ffffff;
     min-width: 200px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-    z-index: 10000; /* Увеличено */
+    z-index: 1000;
     border: 1px solid #e1e4e8;
     border-radius: 6px;
     padding: 8px 0;
     margin-top: 4px;
-    transform: translateX(-25%); /* Центрирование под кнопкой */
 }
 
 .download-folder-dropdown:hover .dropdown-menu {
     display: block;
 }
 
-/* Убедимся, что родительские элементы не обрезают меню */
+/* Ключевое исправление: убираем ограничения на переполнение */
+#repo-files-table,
+.repo-file-item,
 .repo-file-cell.name {
-    position: static !important; /* Изменено с relative на static */
-    overflow: visible !important; /* Добавлено */
-    z-index: auto !important; /* Добавлено */
-}
-
-.repo-file-item {
-    position: static !important; /* Изменено с relative на static */
-    overflow: visible !important; /* Добавлено */
-    z-index: auto !important; /* Добавлено */
-}
-
-#repo-files-table {
-    position: relative; /* Добавлено для контекста */
-    overflow: visible !important; /* Добавлено */
-    z-index: auto !important; /* Добавлено */
+    position: static !important;
+    overflow: visible !important;
 }
 
 .download-folder-dropdown .dropdown-item {
@@ -190,7 +174,7 @@
     color: #0366d6;
 }
 
-/* Для мобильных устройств - сохраняем предыдущие стили */
+/* Для мобильных устройств */
 @media (max-width: 768px) {
     .download-folder-dropdown .dropdown-menu {
         position: fixed;
@@ -198,10 +182,12 @@
         transform: translateX(-50%);
         width: 90%;
         max-width: 300px;
-        z-index: 100000; /* Очень высокий для мобильных */
+        top: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 99999;
     }
     
-    /* На мобильных добавляем затемнение фона */
+    /* Добавляем затемнение фона на мобильных */
     .download-folder-dropdown:hover::before {
         content: '';
         position: fixed;
@@ -210,6 +196,12 @@
         right: 0;
         bottom: 0;
         background: rgba(0, 0, 0, 0.5);
-        z-index: 99999;
+        z-index: 99998;
     }
+}
+
+/* Важно: убедитесь, что таблица не ограничивает видимость */
+#repo-files-table {
+    overflow: visible !important;
+    position: relative;
 }
