@@ -45,7 +45,7 @@
 	{{if and .RefFullName.IsBranch (not .IsViewFile)}}
 		{{/* Compact download folder button (icon only) */}}
 		<button class="ui dropdown basic compact jump button repo-download-folder-compact" 
-				data-tooltip-content="{{ctx.Locale.Tr "repo.download_current_folder"}}"
+				data-tooltip-content="{{ctx.Locale.Tr "repo.download_current_folder"}}">
 			{{svg "octicon-download" 16}}
 			{{svg "octicon-triangle-down" 14 "dropdown icon"}}
 			<div class="menu">
