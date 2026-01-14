@@ -170,6 +170,7 @@ func DownloadByIDOrLFS(ctx *context.Context) {
     }
 }
 
+// DownloadFolder download a folder as archive in specified format
 func DownloadFolder(ctx *context.Context) {
 	// Get path from route parameter
 	treePath := ctx.PathParam("*")
@@ -255,10 +256,10 @@ func DownloadFolder(ctx *context.Context) {
 	
 	// Determine file extension based on format
 	var fileExt string
-	switch format {
+	switch strings.ToLower(format) {
 	case "tar":
 		fileExt = "tar"
-	case "tar.gz", "tgz":
+	case "tar.gz", "tgz", "gz":
 		fileExt = "tar.gz"
 	default: // zip
 		fileExt = "zip"
@@ -267,10 +268,10 @@ func DownloadFolder(ctx *context.Context) {
 	archiveName := fmt.Sprintf("%s-%s.%s", folderName, commit.ID.String()[:7], fileExt)
 	
 	// Set Content-Type based on format
-	switch format {
+	switch strings.ToLower(format) {
 	case "tar":
 		ctx.Resp.Header().Set("Content-Type", "application/x-tar")
-	case "tar.gz", "tgz":
+	case "tar.gz", "tgz", "gz":
 		ctx.Resp.Header().Set("Content-Type", "application/gzip")
 	default: // zip
 		ctx.Resp.Header().Set("Content-Type", "application/zip")
@@ -278,56 +279,10 @@ func DownloadFolder(ctx *context.Context) {
 	
 	ctx.Resp.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, archiveName))
 	
-	// Используем git archive для создания архива напрямую в ответ
-	err = createGitArchive(ctx.Resp, ctx.Repo.GitRepo.Path, commit.ID.String(), decodedPath, format)
+	// Используем оптимизированную версию с буферизацией для больших архивов
+	err = createGitArchiveBuffered(ctx.Resp, ctx.Repo.GitRepo.Path, commit.ID.String(), decodedPath, format)
 	if err != nil {
 		ctx.ServerError("CreateArchive", err)
 		return
 	}
-}
-
-// createGitArchive создает архив через git archive и пишет напрямую в writer
-func createGitArchive(w io.Writer, repoPath string, commitHash string, treePath string, format string) error {
-	// Определяем аргументы для git archive
-	var formatArg string
-	switch format {
-	case "tar":
-		formatArg = "tar"
-	case "tar.gz", "tgz":
-		formatArg = "tar.gz"
-	default: // zip (по умолчанию)
-		formatArg = "zip"
-	}
-	
-	// Собираем аргументы команды
-	args := []string{"archive", "--format=" + formatArg}
-	
-	// Добавляем хеш коммита
-	args = append(args, commitHash)
-	
-	// Добавляем путь, если он указан и не равен "." (вся репа)
-	if treePath != "" && treePath != "." {
-		// Убеждаемся, что путь не начинается с /
-		treePath = strings.TrimPrefix(treePath, "/")
-		args = append(args, treePath)
-	}
-	
-	// Создаем команду
-	cmd := exec.Command("git", args...)
-	cmd.Dir = repoPath
-	
-	// Направляем stdout в writer
-	cmd.Stdout = w
-	
-	// Направляем stderr в буфер для диагностики ошибок
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	
-	// Выполняем команду
-	if err := cmd.Run(); err != nil {
-		// Возвращаем подробную ошибку с выводом stderr
-		return fmt.Errorf("git archive failed: %v\nstderr: %s", err, stderr.String())
-	}
-	
-	return nil
 }
