@@ -1,7 +1,24 @@
---- a/templates/repo/view_list.tmpl
-+++ b/templates/repo/view_list.tmpl
-@@ -XXX,XXX +XXX,XXX @@
- 				{{if $entry.IsSubModule}}
+{{/* use grid layout, still use the old ID because there are many other CSS styles depending on this ID */}}
+<div id="repo-files-table" {{if .HasFilesWithoutLatestCommit}}hx-indicator="#repo-files-table .repo-file-cell.message" hx-trigger="load" hx-swap="morph" hx-post="{{.LastCommitLoaderURL}}"{{end}}>
+	<div class="repo-file-line repo-file-last-commit">
+		{{template "repo/latest_commit" .}}
+		<div>{{if and .LatestCommit .LatestCommit.Committer}}{{DateUtils.TimeSince .LatestCommit.Committer.When}}{{end}}</div>
+	</div>
+	
+	{{$.FileIconPoolHTML}}
+	{{if .HasParentPath}}
+	<a class="repo-file-line parent-link silenced" href="{{.BranchLink}}{{if .ParentPath}}{{PathEscapeSegments .ParentPath}}{{end}}">
+		{{index $.FileIcons ".."}} ..
+	</a>
+	{{end}}
+	{{range $item := .Files}}
+		<div class="repo-file-item">
+			{{$entry := $item.Entry}}
+			{{$commit := $item.Commit}}
+			{{$submoduleFile := $item.SubmoduleFile}}
+			<div class="repo-file-cell name muted-links {{if not $commit}}notready{{end}}">
+				{{index $.FileIcons $entry.Name}}
+				{{if $entry.IsSubModule}}
 					{{$submoduleLink := $submoduleFile.SubmoduleWebLinkTree ctx}}
 					{{if $submoduleLink}}
 						<a class="entry-name" href="{{$submoduleLink.RepoWebLink}}" title="{{$entry.Name}}">{{$entry.Name}}</a>
@@ -27,12 +44,12 @@
 							{{end}}
 						{{end}}
 						
-						{{/* Folder download dropdown menu */}}
-						<div class="download-folder-dropdown">
-							<button class="dropdown-toggle" aria-haspopup="true" aria-expanded="false" data-tooltip-content='{{ctx.Locale.Tr "repo.download_folder"}}' title='{{ctx.Locale.Tr "repo.download_folder"}}'>
-								⬇️
-							</button>
-							<div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+						{{/* Folder download dropdown menu with unified style */}}
+						<button class="ui dropdown basic compact jump button repo-download-folder-inline" 
+								data-tooltip-content='{{ctx.Locale.Tr "repo.download_folder"}}'
+								title='{{ctx.Locale.Tr "repo.download_folder"}}'>
+							{{svg "octicon-download" 16}}
+							<div class="menu">
 								{{/* Build download path */}}
 								{{$downloadPath := ""}}
 								{{if $.TreePath}}
@@ -41,24 +58,24 @@
 									{{$downloadPath = $entry.Name}}
 								{{end}}
 								{{$escapedPath := PathEscapeSegments $downloadPath}}
+								
 								{{/* Build URL with branch */}}
 								{{$branchPrefix := ""}}
 								{{if $currentBranch}}
 									{{$branchPrefix = printf "/branch/%s/" $currentBranch}}
 								{{end}}
 								
-								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=zip">
-									<i class="octicon octicon-file-zip"></i> ZIP
+								<a class="item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=zip">
+									{{svg "octicon-file-zip" 16 "tw-mr-2"}}ZIP
 								</a>
-								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=tar">
-									<i class="octicon octicon-file-binary"></i> TAR
+								<a class="item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=tar">
+									{{svg "octicon-file-binary" 16 "tw-mr-2"}}TAR
 								</a>
-								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=tar.gz">
-									<i class="octicon octicon-file-zip"></i> TAR.GZ
+								<a class="item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=tar.gz">
+									{{svg "octicon-file-zip" 16 "tw-mr-2"}}TAR.GZ
 								</a>
-
 							</div>
-						</div>
+						</button>
 						
 						<a class="entry-name" href="{{$.TreeLink}}/{{PathEscapeSegments $subJumpablePathName}}" title="{{$subJumpablePathName}}">
 							{{$subJumpablePathFields := StringUtils.Split $subJumpablePathName "/"}}
@@ -92,120 +109,62 @@
 </div>
 
 <style>
-
-.download-folder-dropdown {
-    display: inline-block;
-    position: relative;
+.repo-download-folder-inline {
+    padding: 4px 6px;
     margin-right: 8px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    min-width: 32px;
+    height: 24px;
     vertical-align: middle;
 }
 
-.download-folder-dropdown .dropdown-toggle {
-    background: none;
-    border: 1px solid transparent;
-    padding: 4px 6px;
-    cursor: pointer;
-    font-size: 14px;
-    color: #586069;
-    line-height: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 3px;
-    transition: all 0.2s ease;
-}
-
-.download-folder-dropdown .dropdown-toggle:hover {
+.repo-download-folder-inline:hover {
     color: #0366d6;
     background-color: #f6f8fa;
     border-color: #e1e4e8;
 }
 
-.download-folder-dropdown .dropdown-menu {
+.repo-download-folder-inline .menu {
     display: none;
     position: absolute;
     top: 100%;
     left: 0;
     background: #ffffff;
-    min-width: 200px;
+    min-width: 180px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
     z-index: 1000;
     border: 1px solid #e1e4e8;
     border-radius: 6px;
-    padding: 8px 0;
+    padding: 6px 0;
     margin-top: 4px;
 }
 
-.download-folder-dropdown:hover .dropdown-menu {
+.repo-download-folder-inline:hover .menu {
     display: block;
 }
 
-
-#repo-files-table,
-.repo-file-item,
-.repo-file-cell.name {
-    position: static !important;
-    overflow: visible !important;
-}
-
-.download-folder-dropdown .dropdown-item {
-    display: flex;
-    align-items: center;
-    padding: 8px 16px;
-    color: #24292e;
-    text-decoration: none;
-    font-size: 14px;
-    line-height: 1.5;
+.repo-download-folder-inline .menu .item {
+    padding: 8px 12px;
     white-space: nowrap;
-    transition: all 0.2s ease;
 }
 
-.download-folder-dropdown .dropdown-item:hover {
+.repo-download-folder-inline .menu .item:hover {
     background-color: #f6f8fa;
     color: #0366d6;
 }
 
-.download-folder-dropdown .dropdown-item i {
-    margin-right: 10px;
-    width: 16px;
-    text-align: center;
-    color: #6a737d;
+.repo-download-folder-inline .menu .item svg {
+    margin-right: 8px;
 }
-
-.download-folder-dropdown .dropdown-item:hover i {
-    color: #0366d6;
-}
-
 
 @media (max-width: 768px) {
-    .download-folder-dropdown .dropdown-menu {
-        position: fixed;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 90%;
-        max-width: 300px;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        z-index: 99999;
+    .repo-download-folder-inline {
+        padding: 3px 4px;
+        min-width: 28px;
+        height: 22px;
+        margin-right: 4px;
     }
-    
-
-    .download-folder-dropdown:hover::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 99998;
-    }
-}
-
-#repo-files-table {
-    overflow: visible !important;
-    position: relative;
 }
 </style>
