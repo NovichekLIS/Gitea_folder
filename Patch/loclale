@@ -1,0 +1,13 @@
+--- a/options/locale/locale_en-US.ini
++++ b/options/locale/locale_en-US.ini
+@@ -XXX,XXX +XXX,XXX @@
+ [repo]
++download_folder = Download folder
++download_default = Download (ZIP)
+
+--- a/options/locale/locale_ru-RU.ini
++++ b/options/locale/locale_ru-RU.ini
+@@ -XXX,XXX +XXX,XXX @@
+ [repo]
++download_folder = Скачать папку
++download_default = Скачать (ZIP)
