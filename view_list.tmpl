@@ -54,10 +54,6 @@
 								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder/tar.gz/{{$escapedPath}}">
 									<i class="octicon octicon-file-zip"></i> TAR.GZ
 								</a>
-								<div class="dropdown-divider"></div>
-								<a class="dropdown-item default" href="{{$.RepoLink}}/download/folder/{{$escapedPath}}">
-									<i class="octicon octicon-download"></i> {{ctx.Locale.Tr "repo.download_default"}}
-								</a>
 							</div>
 						</div>
 						
@@ -99,6 +95,7 @@
     position: relative;
     margin-right: 8px;
     vertical-align: middle;
+    z-index: 1000; /* Добавлено */
 }
 
 .download-folder-dropdown .dropdown-toggle {
@@ -116,6 +113,8 @@
     height: 24px;
     border-radius: 3px;
     transition: all 0.2s ease;
+    position: relative; /* Добавлено */
+    z-index: 1001; /* Добавлено */
 }
 
 .download-folder-dropdown .dropdown-toggle:hover {
@@ -132,15 +131,35 @@
     background: #ffffff;
     min-width: 200px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-    z-index: 1000;
+    z-index: 10000; /* Увеличено */
     border: 1px solid #e1e4e8;
     border-radius: 6px;
     padding: 8px 0;
     margin-top: 4px;
+    transform: translateX(-25%); /* Центрирование под кнопкой */
 }
 
 .download-folder-dropdown:hover .dropdown-menu {
     display: block;
+}
+
+/* Убедимся, что родительские элементы не обрезают меню */
+.repo-file-cell.name {
+    position: static !important; /* Изменено с relative на static */
+    overflow: visible !important; /* Добавлено */
+    z-index: auto !important; /* Добавлено */
+}
+
+.repo-file-item {
+    position: static !important; /* Изменено с relative на static */
+    overflow: visible !important; /* Добавлено */
+    z-index: auto !important; /* Добавлено */
+}
+
+#repo-files-table {
+    position: relative; /* Добавлено для контекста */
+    overflow: visible !important; /* Добавлено */
+    z-index: auto !important; /* Добавлено */
 }
 
 .download-folder-dropdown .dropdown-item {
@@ -171,35 +190,7 @@
     color: #0366d6;
 }
 
-.download-folder-dropdown .dropdown-divider {
-    height: 1px;
-    margin: 8px 0;
-    background-color: #e1e4e8;
-    border: none;
-}
-
-.download-folder-dropdown .dropdown-item.default {
-    font-weight: 500;
-    color: #0366d6;
-}
-
-/* Убедимся, что меню правильно позиционируется */
-.repo-file-cell.name {
-    position: relative;
-    display: flex;
-    align-items: center;
-    min-height: 32px;
-}
-
-.repo-file-item {
-    position: relative;
-}
-
-.repo-file-item:hover {
-    z-index: 1000;
-}
-
-/* Для мобильных устройств */
+/* Для мобильных устройств - сохраняем предыдущие стили */
 @media (max-width: 768px) {
     .download-folder-dropdown .dropdown-menu {
         position: fixed;
@@ -207,14 +198,18 @@
         transform: translateX(-50%);
         width: 90%;
         max-width: 300px;
+        z-index: 100000; /* Очень высокий для мобильных */
+    }
+    
+    /* На мобильных добавляем затемнение фона */
+    .download-folder-dropdown:hover::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 99999;
     }
 }
-
-/* Отладка - можно убрать после тестирования */
-.download-folder-dropdown {
-    /* border: 1px solid red; */
-}
-.download-folder-dropdown .dropdown-menu {
-    /* border: 1px solid blue; */
-}
-</style>

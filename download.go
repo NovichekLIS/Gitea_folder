@@ -173,46 +173,38 @@ func DownloadByIDOrLFS(ctx *context.Context) {
 
 // DownloadFolder download a folder as archive in specified format
 func DownloadFolder(ctx *context.Context) {
-    // Получаем полный путь из параметра маршрута
-    treePath := ctx.PathParam("*")
-    
-    // Определяем формат из URL пути
-    var format string
+    // Получаем полный URL путь
     fullPath := ctx.Req.URL.Path
+    log.Info("DownloadFolder: fullPath=%q", fullPath)
     
-    // Извлекаем формат из URL
-    if strings.Contains(fullPath, "/download/folder/zip/") {
+    // Определяем формат и путь из URL
+    var format string
+    var treePath string
+    
+    // Проверяем какой формат указан в URL
+    if strings.HasPrefix(fullPath, "/download/folder/zip/") {
         format = "zip"
-        // Удаляем префикс "/download/folder/zip/" из пути
-        prefix := "/download/folder/zip/"
-        if idx := strings.Index(fullPath, prefix); idx != -1 {
-            treePath = fullPath[idx+len(prefix):]
-        }
-    } else if strings.Contains(fullPath, "/download/folder/tar.gz/") {
+        treePath = strings.TrimPrefix(fullPath, "/download/folder/zip/")
+    } else if strings.HasPrefix(fullPath, "/download/folder/tar.gz/") {
         format = "tar.gz"
-        prefix := "/download/folder/tar.gz/"
-        if idx := strings.Index(fullPath, prefix); idx != -1 {
-            treePath = fullPath[idx+len(prefix):]
-        }
-    } else if strings.Contains(fullPath, "/download/folder/tar/") {
+        treePath = strings.TrimPrefix(fullPath, "/download/folder/tar.gz/")
+    } else if strings.HasPrefix(fullPath, "/download/folder/tar/") {
         format = "tar"
-        prefix := "/download/folder/tar/"
-        if idx := strings.Index(fullPath, prefix); idx != -1 {
-            treePath = fullPath[idx+len(prefix):]
-        }
-    } else if strings.Contains(fullPath, "/download/folder/") {
+        treePath = strings.TrimPrefix(fullPath, "/download/folder/tar/")
+    } else if strings.HasPrefix(fullPath, "/download/folder/") {
         format = "zip" // по умолчанию
-        prefix := "/download/folder/"
-        if idx := strings.Index(fullPath, prefix); idx != -1 {
-            treePath = fullPath[idx+len(prefix):]
-        }
+        treePath = strings.TrimPrefix(fullPath, "/download/folder/")
+    } else {
+        // Неожиданный путь
+        ctx.NotFound(fmt.Errorf("invalid download path"))
+        return
     }
     
     if treePath == "" {
         treePath = "."
     }
     
-    log.Info("DownloadFolder: format=%q, raw treePath=%q, fullPath=%q", format, treePath, fullPath)
+    log.Info("DownloadFolder: format=%q, treePath=%q", format, treePath)
     
     // URL decode the path
     decodedPath, err := url.PathUnescape(treePath)
@@ -230,7 +222,7 @@ func DownloadFolder(ctx *context.Context) {
     
     log.Info("DownloadFolder: format=%q, decodedPath=%q", format, decodedPath)
     
-    // ВАЖНО: Проверяем, что у нас есть репозиторий и git репозиторий
+    // ВАЖНО: Проверяем, что у нас есть репозиторий
     if ctx.Repo.Repository == nil {
         log.Error("DownloadFolder: Repository is nil")
         ctx.NotFound(fmt.Errorf("repository not found"))
@@ -243,7 +235,7 @@ func DownloadFolder(ctx *context.Context) {
         return
     }
     
-    // Получаем коммит - сначала пробуем из контекста, если нет - получаем текущий коммит ветки
+    // Получаем коммит
     var commit *git.Commit
     if ctx.Repo.Commit != nil {
         commit = ctx.Repo.Commit
@@ -277,14 +269,12 @@ func DownloadFolder(ctx *context.Context) {
 
     // Для пустого пути (скачивание всего репозитории) проверяем, что коммит существует
     if decodedPath != "" {
-        // Verify it's a directory
-        entry, err := commit.GetTreeEntryByPath(decodedPath)
+        // Пробуем получить поддерево
+        _, err := commit.SubTree(decodedPath)
         if err != nil {
-            log.Error("GetTreeEntryByPath failed for %q in commit %s: %v", decodedPath, commit.ID.String(), err)
+            log.Error("SubTree failed for %q in commit %s: %v", decodedPath, commit.ID.String(), err)
             
-            // Проверяем, может быть путь указан неправильно
-            // Получаем список всех файлов в корне для отладки
-            // commit.Tree - это значение, а не указатель, поэтому проверяем через ListEntries
+            // Для отладки: получаем список файлов в корне
             entries, listErr := commit.Tree.ListEntries()
             if listErr == nil {
                 var availablePaths []string
@@ -297,17 +287,12 @@ func DownloadFolder(ctx *context.Context) {
             if git.IsErrNotExist(err) {
                 ctx.NotFound(fmt.Errorf("path '%s' not found in commit %s", decodedPath, commit.ID.String()[:7]))
             } else {
-                ctx.ServerError("GetTreeEntryByPath", err)
+                ctx.ServerError("CheckDirectory", err)
             }
             return
         }
-
-        if !entry.IsDir() {
-            ctx.NotFound(fmt.Errorf("path '%s' is not a directory", decodedPath))
-            return
-        }
-
-        log.Info("DownloadFolder: Found directory entry: %s", entry.Name())
+        
+        log.Info("DownloadFolder: Path %s is a valid directory", decodedPath)
     }
 
     // Set download headers
