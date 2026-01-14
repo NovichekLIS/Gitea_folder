@@ -5,10 +5,13 @@
 package repo
 
 import (
+    "bytes"
     "fmt"
     "io"
-    "net/url" 
+    "net/url"
+    "os/exec" 
     "path"
+    "path/filepath"
     "strings"
     "time"
 
@@ -168,165 +171,164 @@ func DownloadByIDOrLFS(ctx *context.Context) {
     }
 }
 
-// DownloadFolder download a folder as archive in specified format
 func DownloadFolder(ctx *context.Context) {
-    // Get path from route parameter
-    treePath := ctx.PathParam("*")
-    
-    // Get branch name from route parameter (if present)
-    branchName := ctx.PathParam("branchname")
-    
-    // Get format from query parameter
-    format := ctx.Req.URL.Query().Get("format")
-    if format == "" {
-        format = "zip" // default
-    }
-    
-    // Если путь не указан, используем текущий путь из контекста
-    if treePath == "" && ctx.Repo.TreePath != "" {
-        treePath = ctx.Repo.TreePath
-    }
-    
-    // URL decode the path
-    decodedPath, err := url.PathUnescape(treePath)
-    if err != nil {
-        decodedPath = treePath
-    }
-    
-    // Remove leading slash if present
-    decodedPath = strings.TrimPrefix(decodedPath, "/")
-    
-    // Если путь ".", это вся репа, оставляем как есть (git archive обработает)
-    if decodedPath == "." {
-        decodedPath = ""
-    }
-    
-    // Validate repository access
-    if ctx.Repo.Repository == nil || ctx.Repo.GitRepo == nil {
-        ctx.NotFound(fmt.Errorf("repository not found"))
-        return
-    }
-    
-    // Determine which branch to use
-    var targetBranch string
-    if branchName != "" {
-        // Use branch from URL
-        targetBranch = branchName
-    } else if ctx.Repo.Commit != nil {
-        // Commit exists in context, use default branch
-        targetBranch = ctx.Repo.Repository.DefaultBranch
-        if targetBranch == "" {
-            targetBranch = "main"
-        }
-    } else {
-        // No branch specified, use default
-        targetBranch = ctx.Repo.Repository.DefaultBranch
-        if targetBranch == "" {
-            targetBranch = "main"
-        }
-    }
-    
-    // Get commit for the branch
-    commit, err := ctx.Repo.GitRepo.GetCommit(targetBranch)
-    if err != nil {
-        ctx.ServerError("GetCommit", err)
-        return
-    }
-    
-    // Verify path exists and is a directory (если путь указан)
-    if decodedPath != "" {
-        _, err := commit.SubTree(decodedPath)
-        if err != nil {
-            if git.IsErrNotExist(err) {
-                ctx.NotFound(fmt.Errorf("path '%s' not found in branch '%s'", decodedPath, targetBranch))
-            } else {
-                ctx.ServerError("CheckDirectory", err)
-            }
-            return
-        }
-    }
-    
-    // Set download headers
-    folderName := path.Base(decodedPath)
-    if folderName == "" || folderName == "." || folderName == "/" {
-        folderName = ctx.Repo.Repository.Name
-    }
-    
-    // Determine file extension based on format
-    var fileExt string
-    switch format {
-    case "tar":
-        fileExt = "tar"
-    case "tar.gz", "tgz":
-        fileExt = "tar.gz"
-    default: // zip
-        fileExt = "zip"
-    }
-    
-    archiveName := fmt.Sprintf("%s-%s.%s", folderName, commit.ID.String()[:7], fileExt)
-    
-    // Set Content-Type based on format
-    switch format {
-    case "tar":
-        ctx.Resp.Header().Set("Content-Type", "application/x-tar")
-    case "tar.gz", "tgz":
-        ctx.Resp.Header().Set("Content-Type", "application/gzip")
-    default: // zip
-        ctx.Resp.Header().Set("Content-Type", "application/zip")
-    }
-    
-    ctx.Resp.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, archiveName))
-    
-    // Используем git archive для создания архива
-    err = createGitArchive(ctx.Resp, ctx.Repo.GitRepo.Path, commit.ID.String(), decodedPath, format)
-    if err != nil {
-        ctx.ServerError("CreateArchive", err)
-        return
-    }
+	// Get path from route parameter
+	treePath := ctx.PathParam("*")
+	
+	// Get branch name from route parameter (if present)
+	branchName := ctx.PathParam("branchname")
+	
+	// Get format from query parameter
+	format := ctx.Req.URL.Query().Get("format")
+	if format == "" {
+		format = "zip" // default
+	}
+	
+	// Если путь не указан, используем текущий путь из контекста
+	if treePath == "" && ctx.Repo.TreePath != "" {
+		treePath = ctx.Repo.TreePath
+	}
+	
+	// URL decode the path
+	decodedPath, err := url.PathUnescape(treePath)
+	if err != nil {
+		decodedPath = treePath
+	}
+	
+	// Remove leading slash if present
+	decodedPath = strings.TrimPrefix(decodedPath, "/")
+	
+	// Если путь ".", это вся репа, оставляем как есть (git archive обработает)
+	if decodedPath == "." {
+		decodedPath = ""
+	}
+	
+	// Validate repository access
+	if ctx.Repo.Repository == nil || ctx.Repo.GitRepo == nil {
+		ctx.NotFound(fmt.Errorf("repository not found"))
+		return
+	}
+	
+	// Determine which branch to use
+	var targetBranch string
+	if branchName != "" {
+		// Use branch from URL
+		targetBranch = branchName
+	} else if ctx.Repo.Commit != nil {
+		// Commit exists in context, use default branch
+		targetBranch = ctx.Repo.Repository.DefaultBranch
+		if targetBranch == "" {
+			targetBranch = "main"
+		}
+	} else {
+		// No branch specified, use default
+		targetBranch = ctx.Repo.Repository.DefaultBranch
+		if targetBranch == "" {
+			targetBranch = "main"
+		}
+	}
+	
+	// Get commit for the branch
+	commit, err := ctx.Repo.GitRepo.GetCommit(targetBranch)
+	if err != nil {
+		ctx.ServerError("GetCommit", err)
+		return
+	}
+	
+	// Verify path exists and is a directory (если путь указан)
+	if decodedPath != "" {
+		_, err := commit.SubTree(decodedPath)
+		if err != nil {
+			if git.IsErrNotExist(err) {
+				ctx.NotFound(fmt.Errorf("path '%s' not found in branch '%s'", decodedPath, targetBranch))
+			} else {
+				ctx.ServerError("CheckDirectory", err)
+			}
+			return
+		}
+	}
+	
+	// Set download headers
+	folderName := path.Base(decodedPath)
+	if folderName == "" || folderName == "." || folderName == "/" {
+		folderName = ctx.Repo.Repository.Name
+	}
+	
+	// Determine file extension based on format
+	var fileExt string
+	switch format {
+	case "tar":
+		fileExt = "tar"
+	case "tar.gz", "tgz":
+		fileExt = "tar.gz"
+	default: // zip
+		fileExt = "zip"
+	}
+	
+	archiveName := fmt.Sprintf("%s-%s.%s", folderName, commit.ID.String()[:7], fileExt)
+	
+	// Set Content-Type based on format
+	switch format {
+	case "tar":
+		ctx.Resp.Header().Set("Content-Type", "application/x-tar")
+	case "tar.gz", "tgz":
+		ctx.Resp.Header().Set("Content-Type", "application/gzip")
+	default: // zip
+		ctx.Resp.Header().Set("Content-Type", "application/zip")
+	}
+	
+	ctx.Resp.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, archiveName))
+	
+	// Используем git archive для создания архива напрямую в ответ
+	err = createGitArchive(ctx.Resp, ctx.Repo.GitRepo.Path, commit.ID.String(), decodedPath, format)
+	if err != nil {
+		ctx.ServerError("CreateArchive", err)
+		return
+	}
 }
 
 // createGitArchive создает архив через git archive и пишет напрямую в writer
 func createGitArchive(w io.Writer, repoPath string, commitHash string, treePath string, format string) error {
-    // Определяем аргументы для git archive
-    var formatArg string
-    switch format {
-    case "tar":
-        formatArg = "tar"
-    case "tar.gz", "tgz":
-        formatArg = "tar.gz"
-    default: // zip (по умолчанию)
-        formatArg = "zip"
-    }
-    
-    // Собираем аргументы команды
-    args := []string{"archive", "--format=" + formatArg}
-    
-    // Добавляем хеш коммита
-    args = append(args, commitHash)
-    
-    // Добавляем путь, если он указан и не равен "." (вся репа)
-    if treePath != "" && treePath != "." {
-        // Убеждаемся, что путь не начинается с /
-        treePath = strings.TrimPrefix(treePath, "/")
-        args = append(args, treePath)
-    }
-    
-    // Создаем команду
-    cmd := exec.Command("git", args...)
-    cmd.Dir = repoPath
-    
-    // Направляем stdout в writer
-    cmd.Stdout = w
-    
-    // Направляем stderr в буфер для диагностики ошибок
-    var stderr bytes.Buffer
-    cmd.Stderr = &stderr
-    
-    // Выполняем команду
-    if err := cmd.Run(); err != nil {
-        // Возвращаем подробную ошибку с выводом stderr
-        return fmt.Errorf("git archive failed: %v\nstderr: %s", err, stderr.String())
-    }
-    
-    return nil
+	// Определяем аргументы для git archive
+	var formatArg string
+	switch format {
+	case "tar":
+		formatArg = "tar"
+	case "tar.gz", "tgz":
+		formatArg = "tar.gz"
+	default: // zip (по умолчанию)
+		formatArg = "zip"
+	}
+	
+	// Собираем аргументы команды
+	args := []string{"archive", "--format=" + formatArg}
+	
+	// Добавляем хеш коммита
+	args = append(args, commitHash)
+	
+	// Добавляем путь, если он указан и не равен "." (вся репа)
+	if treePath != "" && treePath != "." {
+		// Убеждаемся, что путь не начинается с /
+		treePath = strings.TrimPrefix(treePath, "/")
+		args = append(args, treePath)
+	}
+	
+	// Создаем команду
+	cmd := exec.Command("git", args...)
+	cmd.Dir = repoPath
+	
+	// Направляем stdout в writer
+	cmd.Stdout = w
+	
+	// Направляем stderr в буфер для диагностики ошибок
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	
+	// Выполняем команду
+	if err := cmd.Run(); err != nil {
+		// Возвращаем подробную ошибку с выводом stderr
+		return fmt.Errorf("git archive failed: %v\nstderr: %s", err, stderr.String())
+	}
+	
+	return nil
 }
