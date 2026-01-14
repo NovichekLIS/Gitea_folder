@@ -19,16 +19,6 @@
 		<div>{{if and .LatestCommit .LatestCommit.Committer}}{{DateUtils.TimeSince .LatestCommit.Committer.When}}{{end}}</div>
 	</div>
 	
-	{{/* Отладочная информация */}}
-	<div style="background: #f6f8fa; padding: 8px; margin: 8px 0; border-radius: 4px; font-size: 12px; color: #586069;">
-		<strong>Отладка:</strong><br>
-		TreePath: {{.TreePath}}<br>
-		RepoLink: {{.RepoLink}}<br>
-		BranchLink: {{.BranchLink}}<br>
-		TreeLink: {{.TreeLink}}<br>
-		CurrentBranch: {{$currentBranch}}
-	</div>
-	
 	{{$.FileIconPoolHTML}}
 	{{if .HasParentPath}}
 	<a class="repo-file-line parent-link silenced" href="{{.BranchLink}}{{if .ParentPath}}{{PathEscapeSegments .ParentPath}}{{end}}">
@@ -84,10 +74,6 @@
 								</a>
 								<a class="dropdown-item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=tar.gz">
 									<i class="octicon octicon-file-zip"></i> TAR.GZ
-								</a>
-								<div class="dropdown-divider"></div>
-								<a class="dropdown-item default" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}">
-									<i class="octicon octicon-download"></i> {{ctx.Locale.Tr "repo.download_default"}}
 								</a>
 							</div>
 						</div>
