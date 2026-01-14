@@ -249,29 +249,18 @@ func DownloadFolder(ctx *context.Context) {
         commit = ctx.Repo.Commit
         log.Info("DownloadFolder: Using commit from context: %s", commit.ID.String())
     } else {
-        // Получаем текущий коммит из репозитория
-        // Сначала пробуем получить коммит из ссылки в контексте
-        if ctx.Repo.RefName != "" {
-            commit, err = ctx.Repo.GitRepo.GetCommit(ctx.Repo.RefName)
-            if err != nil {
-                log.Warn("DownloadFolder: Failed to get commit for ref %s: %v", ctx.Repo.RefName, err)
-            }
+        // Получаем текущий коммит из ветки по умолчанию
+        ref := ctx.Repo.Repository.DefaultBranch
+        if ref == "" {
+            ref = "main"
         }
+        log.Info("DownloadFolder: No commit in context, using default branch: %s", ref)
         
-        // Если не получилось, используем ветку по умолчанию
-        if commit == nil {
-            ref := ctx.Repo.Repository.DefaultBranch
-            if ref == "" {
-                ref = "main"
-            }
-            log.Info("DownloadFolder: No commit in context, using default branch: %s", ref)
-            
-            commit, err = ctx.Repo.GitRepo.GetCommit(ref)
-            if err != nil {
-                log.Error("DownloadFolder: Failed to get commit for default branch %s: %v", ref, err)
-                ctx.ServerError("GetCommit", err)
-                return
-            }
+        commit, err = ctx.Repo.GitRepo.GetCommit(ref)
+        if err != nil {
+            log.Error("DownloadFolder: Failed to get commit for default branch %s: %v", ref, err)
+            ctx.ServerError("GetCommit", err)
+            return
         }
         
         // Сохраняем коммит в контексте для будущих вызовов
@@ -286,43 +275,32 @@ func DownloadFolder(ctx *context.Context) {
     
     log.Info("DownloadFolder: Using commit %s for path %s", commit.ID.String(), decodedPath)
 
-    // Для пустого пути (скачивание всего репозитория) проверяем, что коммит существует
+    // Для пустого пути (скачивание всего репозитории) проверяем, что коммит существует
     if decodedPath != "" {
-        // Verify it's a directory
-        entry, err := commit.GetTreeEntryByPath(decodedPath)
+        // Пробуем получить поддерево - это более надежный способ проверить существование директории
+        _, err := commit.SubTree(decodedPath)
         if err != nil {
-            log.Error("GetTreeEntryByPath failed for %q in commit %s: %v", decodedPath, commit.ID.String(), err)
+            log.Error("SubTree failed for %q in commit %s: %v", decodedPath, commit.ID.String(), err)
             
-            // Проверяем, может быть путь указан относительно корня репозитория
-            // Попробуем получить дерево и посмотреть что там
-            tree := commit.Tree
-            if tree != nil {
-                entries, listErr := tree.ListEntries()
-                if listErr == nil {
-                    log.Info("DownloadFolder: Available entries in root: %v", func() []string {
-                        var names []string
-                        for _, e := range entries {
-                            names = append(names, e.Name())
-                        }
-                        return names
-                    }())
+            // Для отладки: получаем список файлов в корне
+            entries, listErr := commit.Tree.ListEntries()
+            if listErr == nil {
+                var availablePaths []string
+                for _, e := range entries {
+                    availablePaths = append(availablePaths, e.Name())
                 }
+                log.Info("DownloadFolder: Available paths in root: %v", availablePaths)
             }
             
             if git.IsErrNotExist(err) {
-                ctx.NotFound(fmt.Errorf("path not found: %s (available: check logs)", decodedPath))
+                ctx.NotFound(fmt.Errorf("path '%s' not found in commit %s", decodedPath, commit.ID.String()[:7]))
             } else {
-                ctx.ServerError("GetTreeEntryByPath", err)
+                ctx.ServerError("CheckDirectory", err)
             }
             return
         }
-
-        if !entry.IsDir() {
-            ctx.NotFound(fmt.Errorf("path is not a directory: %s", decodedPath))
-            return
-        }
-
-        log.Info("DownloadFolder: Found directory entry: %s", entry.Name())
+        
+        log.Info("DownloadFolder: Path %s is a valid directory", decodedPath)
     }
 
     // Set download headers
