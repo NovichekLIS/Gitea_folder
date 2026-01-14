@@ -109,20 +109,12 @@
 </div>
 
 <style>
-/* Inline download folder button styles (matches view_home.tmpl style) */
 .repo-download-folder-inline {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
     padding: 4px 6px;
     margin-right: 8px;
-    font-size: 14px;
-    color: #586069;
-    background-color: transparent;
     border: 1px solid transparent;
     border-radius: 6px;
     cursor: pointer;
-    transition: all 0.2s ease;
     min-width: 32px;
     height: 24px;
     vertical-align: middle;
@@ -134,12 +126,6 @@
     border-color: #e1e4e8;
 }
 
-.repo-download-folder-inline .dropdown.icon {
-    margin-left: 2px;
-    opacity: 0.8;
-}
-
-/* Dropdown menu styles (matches view_home.tmpl style) */
 .repo-download-folder-inline .menu {
     display: none;
     position: absolute;
@@ -160,15 +146,8 @@
 }
 
 .repo-download-folder-inline .menu .item {
-    display: flex;
-    align-items: center;
     padding: 8px 12px;
-    color: #24292e;
-    text-decoration: none;
-    font-size: 14px;
-    line-height: 1.4;
     white-space: nowrap;
-    transition: all 0.2s ease;
 }
 
 .repo-download-folder-inline .menu .item:hover {
@@ -178,48 +157,14 @@
 
 .repo-download-folder-inline .menu .item svg {
     margin-right: 8px;
-    color: #6a737d;
 }
 
-.repo-download-folder-inline .menu .item:hover svg {
-    color: #0366d6;
-}
-
-.repo-download-folder-inline .menu .divider {
-    height: 1px;
-    margin: 6px 0;
-    background-color: #e1e4e8;
-    border: none;
-}
-
-/* Ensure proper positioning */
-.repo-file-cell.name {
-    position: relative;
-    display: flex;
-    align-items: center;
-    min-height: 32px;
-}
-
-.repo-file-item {
-    position: relative;
-}
-
-.repo-file-item:hover {
-    z-index: 1000;
-}
-
-/* Mobile responsiveness */
 @media (max-width: 768px) {
     .repo-download-folder-inline {
         padding: 3px 4px;
         min-width: 28px;
         height: 22px;
         margin-right: 4px;
-    }
-    
-    .repo-download-folder-inline .dropdown.icon {
-        width: 12px;
-        height: 12px;
     }
 }
 </style>
