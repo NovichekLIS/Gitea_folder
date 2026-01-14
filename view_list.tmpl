@@ -44,13 +44,37 @@
 							{{end}}
 						{{end}}
 						
-						{{/* Compact folder download button (icon only, no dropdown arrow) */}}
-						<button class="ui basic compact button repo-download-folder-icon" 
+						{{/* Folder download dropdown menu with unified style */}}
+						<button class="ui dropdown basic compact jump button repo-download-folder-inline" 
 								data-tooltip-content='{{ctx.Locale.Tr "repo.download_folder"}}'
-								title='{{ctx.Locale.Tr "repo.download_folder"}}'
-								data-download-path="{{if $.TreePath}}{{$.TreePath}}/{{end}}{{$entry.Name}}"
-								data-branch="{{$currentBranch}}">
+								title='{{ctx.Locale.Tr "repo.download_folder"}}'>
 							{{svg "octicon-download" 16}}
+							<div class="menu">
+								{{/* Build download path */}}
+								{{$downloadPath := ""}}
+								{{if $.TreePath}}
+									{{$downloadPath = printf "%s/%s" $.TreePath $entry.Name}}
+								{{else}}
+									{{$downloadPath = $entry.Name}}
+								{{end}}
+								{{$escapedPath := PathEscapeSegments $downloadPath}}
+								
+								{{/* Build URL with branch */}}
+								{{$branchPrefix := ""}}
+								{{if $currentBranch}}
+									{{$branchPrefix = printf "/branch/%s/" $currentBranch}}
+								{{end}}
+								
+								<a class="item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=zip">
+									{{svg "octicon-file-zip" 16 "tw-mr-2"}}ZIP
+								</a>
+								<a class="item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=tar">
+									{{svg "octicon-file-binary" 16 "tw-mr-2"}}TAR
+								</a>
+								<a class="item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=tar.gz">
+									{{svg "octicon-file-zip" 16 "tw-mr-2"}}TAR.GZ
+								</a>
+							</div>
 						</button>
 						
 						<a class="entry-name" href="{{$.TreeLink}}/{{PathEscapeSegments $subJumpablePathName}}" title="{{$subJumpablePathName}}">
@@ -84,93 +108,118 @@
 	{{end}}
 </div>
 
-{{/* Simple JavaScript for download functionality */}}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Handle folder download button clicks
-    document.querySelectorAll('.repo-download-folder-icon').forEach(function(button) {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const downloadPath = this.getAttribute('data-download-path');
-            const branch = this.getAttribute('data-branch');
-            
-            // Default to ZIP format
-            let url = '{{$.RepoLink}}/download/folder';
-            if (branch) {
-                url += '/branch/' + encodeURIComponent(branch);
-            }
-            url += '/' + encodeURIComponent(downloadPath) + '?format=zip';
-            
-            // Start download
-            window.location.href = url;
-        });
-        
-        // Add context menu for format selection
-        button.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const downloadPath = this.getAttribute('data-download-path');
-            const branch = this.getAttribute('data-branch');
-            const repoLink = '{{$.RepoLink}}';
-            
-            // Create simple context menu
-            const menu = document.createElement('div');
-            menu.className = 'ui menu compact';
-            menu.style.cssText = 'position: absolute; z-index: 1000; background: white; border: 1px solid #e1e4e8; border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.12);';
-            menu.style.left = e.pageX + 'px';
-            menu.style.top = e.pageY + 'px';
-            
-            // Build base URL
-            let baseUrl = repoLink + '/download/folder';
-            if (branch) {
-                baseUrl += '/branch/' + encodeURIComponent(branch);
-            }
-            baseUrl += '/' + encodeURIComponent(downloadPath);
-            
-            // Add format options
-            const formats = [
-                { name: 'ZIP', icon: 'octicon-file-zip', format: 'zip' },
-                { name: 'TAR', icon: 'octicon-file-binary', format: 'tar' },
-                { name: 'TAR.GZ', icon: 'octicon-file-zip', format: 'tar.gz' }
-            ];
-            
-            formats.forEach(function(format) {
-                const item = document.createElement('a');
-                item.className = 'item';
-                item.href = baseUrl + '?format=' + format.format;
-                item.innerHTML = `
-                    <span style="display: inline-flex; align-items: center;">
-                        ${createSvg(format.icon, 16, 'margin-right: 8px;')}
-                        ${format.name}
-                    </span>
-                `;
-                menu.appendChild(item);
-            });
-            
-            // Add to document and remove on click outside
-            document.body.appendChild(menu);
-            
-            const removeMenu = function() {
-                if (menu.parentNode) {
-                    menu.parentNode.removeChild(menu);
-                }
-                document.removeEventListener('click', removeMenu);
-            };
-            
-            setTimeout(function() {
-                document.addEventListener('click', removeMenu);
-            }, 0);
-        });
-    });
-    
-    // Helper function to create SVG
-    function createSvg(icon, size, style) {
-        return `<svg class="octicon" width="${size}" height="${size}" style="${style || ''}">
-            <use xlink:href="#${icon}"></use>
-        </svg>`;
+<style>
+/* Inline download folder button styles (matches view_home.tmpl style) */
+.repo-download-folder-inline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 6px;
+    margin-right: 8px;
+    font-size: 14px;
+    color: #586069;
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 32px;
+    height: 24px;
+    vertical-align: middle;
+}
+
+.repo-download-folder-inline:hover {
+    color: #0366d6;
+    background-color: #f6f8fa;
+    border-color: #e1e4e8;
+}
+
+.repo-download-folder-inline .dropdown.icon {
+    margin-left: 2px;
+    opacity: 0.8;
+}
+
+/* Dropdown menu styles (matches view_home.tmpl style) */
+.repo-download-folder-inline .menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: #ffffff;
+    min-width: 180px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    z-index: 1000;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 6px 0;
+    margin-top: 4px;
+}
+
+.repo-download-folder-inline:hover .menu {
+    display: block;
+}
+
+.repo-download-folder-inline .menu .item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    color: #24292e;
+    text-decoration: none;
+    font-size: 14px;
+    line-height: 1.4;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.repo-download-folder-inline .menu .item:hover {
+    background-color: #f6f8fa;
+    color: #0366d6;
+}
+
+.repo-download-folder-inline .menu .item svg {
+    margin-right: 8px;
+    color: #6a737d;
+}
+
+.repo-download-folder-inline .menu .item:hover svg {
+    color: #0366d6;
+}
+
+.repo-download-folder-inline .menu .divider {
+    height: 1px;
+    margin: 6px 0;
+    background-color: #e1e4e8;
+    border: none;
+}
+
+/* Ensure proper positioning */
+.repo-file-cell.name {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 32px;
+}
+
+.repo-file-item {
+    position: relative;
+}
+
+.repo-file-item:hover {
+    z-index: 1000;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .repo-download-folder-inline {
+        padding: 3px 4px;
+        min-width: 28px;
+        height: 22px;
+        margin-right: 4px;
     }
-});
-</script>
+    
+    .repo-download-folder-inline .dropdown.icon {
+        width: 12px;
+        height: 12px;
+    }
+}
+</style>
