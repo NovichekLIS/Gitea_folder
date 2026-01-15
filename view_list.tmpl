@@ -118,6 +118,7 @@
     min-width: 32px;
     height: 24px;
     vertical-align: middle;
+    position: relative; /* Добавляем относительное позиционирование для контейнера */
 }
 
 .repo-download-folder-inline:hover {
@@ -139,6 +140,8 @@
     border-radius: 6px;
     padding: 6px 0;
     margin-top: 4px;
+    max-height: 200px; /* Ограничиваем максимальную высоту */
+    overflow-y: auto; /* Добавляем прокрутку при необходимости */
 }
 
 .repo-download-folder-inline:hover .menu {
@@ -148,6 +151,9 @@
 .repo-download-folder-inline .menu .item {
     padding: 8px 12px;
     white-space: nowrap;
+    display: block;
+    text-align: left;
+    width: 100%;
 }
 
 .repo-download-folder-inline .menu .item:hover {
@@ -157,14 +163,48 @@
 
 .repo-download-folder-inline .menu .item svg {
     margin-right: 8px;
+    vertical-align: middle;
 }
 
+/* Медиа-запросы для мобильных устройств */
 @media (max-width: 768px) {
     .repo-download-folder-inline {
         padding: 3px 4px;
         min-width: 28px;
         height: 22px;
         margin-right: 4px;
+    }
+    
+    .repo-download-folder-inline .menu {
+        position: fixed; /* На мобильных используем фиксированное позиционирование */
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-height: 50vh;
+        border-radius: 12px 12px 0 0;
+        margin-top: 0;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+    }
+    
+    /* Затемнение фона на мобильных */
+    .repo-download-folder-inline:hover::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+    }
+}
+
+/* Для очень маленьких экранов */
+@media (max-width: 480px) {
+    .repo-download-folder-inline .menu {
+        max-height: 40vh;
     }
 }
 </style>
