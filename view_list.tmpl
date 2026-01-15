@@ -17,6 +17,59 @@
 			{{$commit := $item.Commit}}
 			{{$submoduleFile := $item.SubmoduleFile}}
 			<div class="repo-file-cell name muted-links {{if not $commit}}notready{{end}}">
+				{{if $entry.IsDir}}
+					{{$subJumpablePathName := $entry.GetSubJumpablePathName}}
+					
+					{{/* Extract current branch from BranchLink */}}
+					{{$currentBranch := ""}}
+					{{if $.BranchLink}}
+						{{$parts := StringUtils.Split $.BranchLink "/"}}
+						{{range $i, $part := $parts}}
+							{{if eq $part "branch"}}
+								{{if lt (Eval $i "+" 1) (len $parts)}}
+									{{$currentBranch = index $parts (Eval $i "+" 1)}}
+								{{end}}
+							{{end}}
+						{{end}}
+					{{end}}
+					
+					{{/* Compact folder download button */}}
+					<div class="repo-download-folder-wrapper">
+						<button class="ui basic compact icon button repo-download-folder-inline" 
+								data-tooltip-content='{{ctx.Locale.Tr "repo.download_folder"}}'
+								title='{{ctx.Locale.Tr "repo.download_folder"}}'
+								type="button">
+							{{svg "octicon-download" 14}}
+						</button>
+						<div class="repo-download-menu">
+							{{/* Build download path */}}
+							{{$downloadPath := ""}}
+							{{if $.TreePath}}
+								{{$downloadPath = printf "%s/%s" $.TreePath $entry.Name}}
+							{{else}}
+								{{$downloadPath = $entry.Name}}
+							{{end}}
+							{{$escapedPath := PathEscapeSegments $downloadPath}}
+							
+							{{/* Build URL with branch */}}
+							{{$branchPrefix := ""}}
+							{{if $currentBranch}}
+								{{$branchPrefix = printf "/branch/%s/" $currentBranch}}
+							{{end}}
+							
+							<a class="item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=zip">
+								{{svg "octicon-file-zip" 16 "tw-mr-2"}}ZIP
+							</a>
+							<a class="item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=tar">
+								{{svg "octicon-file-binary" 16 "tw-mr-2"}}TAR
+							</a>
+							<a class="item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=tar.gz">
+								{{svg "octicon-file-zip" 16 "tw-mr-2"}}TAR.GZ
+							</a>
+						</div>
+					</div>
+				{{end}}
+				
 				{{index $.FileIcons $entry.Name}}
 				{{if $entry.IsSubModule}}
 					{{$submoduleLink := $submoduleFile.SubmoduleWebLinkTree ctx}}
@@ -29,54 +82,6 @@
 					{{end}}
 				{{else}}
 					{{if $entry.IsDir}}
-						{{$subJumpablePathName := $entry.GetSubJumpablePathName}}
-						
-						{{/* Extract current branch from BranchLink */}}
-						{{$currentBranch := ""}}
-						{{if $.BranchLink}}
-							{{$parts := StringUtils.Split $.BranchLink "/"}}
-							{{range $i, $part := $parts}}
-								{{if eq $part "branch"}}
-									{{if lt (Eval $i "+" 1) (len $parts)}}
-										{{$currentBranch = index $parts (Eval $i "+" 1)}}
-									{{end}}
-								{{end}}
-							{{end}}
-						{{end}}
-						
-						{{/* Folder download dropdown menu with unified style */}}
-						<button class="ui dropdown basic compact jump button repo-download-folder-inline" 
-								data-tooltip-content='{{ctx.Locale.Tr "repo.download_folder"}}'
-								title='{{ctx.Locale.Tr "repo.download_folder"}}'>
-							{{svg "octicon-download" 16}}
-							<div class="menu">
-								{{/* Build download path */}}
-								{{$downloadPath := ""}}
-								{{if $.TreePath}}
-									{{$downloadPath = printf "%s/%s" $.TreePath $entry.Name}}
-								{{else}}
-									{{$downloadPath = $entry.Name}}
-								{{end}}
-								{{$escapedPath := PathEscapeSegments $downloadPath}}
-								
-								{{/* Build URL with branch */}}
-								{{$branchPrefix := ""}}
-								{{if $currentBranch}}
-									{{$branchPrefix = printf "/branch/%s/" $currentBranch}}
-								{{end}}
-								
-								<a class="item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=zip">
-									{{svg "octicon-file-zip" 16 "tw-mr-2"}}ZIP
-								</a>
-								<a class="item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=tar">
-									{{svg "octicon-file-binary" 16 "tw-mr-2"}}TAR
-								</a>
-								<a class="item" href="{{$.RepoLink}}/download/folder{{$branchPrefix}}{{$escapedPath}}?format=tar.gz">
-									{{svg "octicon-file-zip" 16 "tw-mr-2"}}TAR.GZ
-								</a>
-							</div>
-						</button>
-						
 						<a class="entry-name" href="{{$.TreeLink}}/{{PathEscapeSegments $subJumpablePathName}}" title="{{$subJumpablePathName}}">
 							{{$subJumpablePathFields := StringUtils.Split $subJumpablePathName "/"}}
 							{{$subJumpablePathFieldLast := (Eval (len $subJumpablePathFields) "-" 1)}}
@@ -109,102 +114,127 @@
 </div>
 
 <style>
-.repo-download-folder-inline {
-    padding: 4px 6px;
+.repo-download-folder-wrapper {
+    display: inline-block;
+    position: relative;
     margin-right: 8px;
-    border: 1px solid transparent;
-    border-radius: 6px;
-    cursor: pointer;
-    min-width: 32px;
-    height: 24px;
     vertical-align: middle;
-    position: relative; /* Добавляем относительное позиционирование для контейнера */
+}
+
+.repo-download-folder-inline {
+    padding: 2px 4px !important;
+    margin: 0 !important;
+    border: 1px solid #d0d7de !important;
+    border-radius: 6px !important;
+    cursor: pointer;
+    width: 26px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f6f8fa !important;
+    opacity: 0.7;
+    transition: all 0.2s ease;
 }
 
 .repo-download-folder-inline:hover {
-    color: #0366d6;
-    background-color: #f6f8fa;
-    border-color: #e1e4e8;
+    opacity: 1;
+    background-color: #ffffff !important;
+    border-color: #8c959f !important;
+    box-shadow: 0 1px 0 rgba(27, 31, 35, 0.04);
 }
 
-.repo-download-folder-inline .menu {
+.repo-download-folder-inline svg {
+    width: 14px;
+    height: 14px;
+    color: #57606a;
+}
+
+.repo-download-folder-inline:hover svg {
+    color: #0969da;
+}
+
+.repo-download-menu {
     display: none;
     position: absolute;
     top: 100%;
     left: 0;
     background: #ffffff;
-    min-width: 180px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    min-width: 140px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
     z-index: 1000;
     border: 1px solid #e1e4e8;
     border-radius: 6px;
-    padding: 6px 0;
-    margin-top: 4px;
-    max-height: 200px; /* Ограничиваем максимальную высоту */
-    overflow-y: auto; /* Добавляем прокрутку при необходимости */
+    padding: 4px 0;
+    margin-top: 2px;
+    overflow: hidden;
 }
 
-.repo-download-folder-inline:hover .menu {
+.repo-download-folder-wrapper:hover .repo-download-menu {
     display: block;
 }
 
-.repo-download-folder-inline .menu .item {
-    padding: 8px 12px;
+.repo-download-menu .item {
+    display: flex;
+    align-items: center;
+    padding: 6px 12px;
     white-space: nowrap;
-    display: block;
-    text-align: left;
-    width: 100%;
+    color: #24292f;
+    text-decoration: none;
+    font-size: 13px;
+    transition: background-color 0.1s ease;
 }
 
-.repo-download-folder-inline .menu .item:hover {
-    background-color: #f6f8fa;
-    color: #0366d6;
+.repo-download-menu .item:hover {
+    background-color: #0969da;
+    color: #ffffff;
 }
 
-.repo-download-folder-inline .menu .item svg {
+.repo-download-menu .item:hover svg {
+    color: #ffffff;
+}
+
+.repo-download-menu .item svg {
+    width: 14px;
+    height: 14px;
     margin-right: 8px;
-    vertical-align: middle;
+    color: #57606a;
 }
 
-/* Медиа-запросы для мобильных устройств */
+/* Ensure menu appears above other elements */
+.repo-file-cell {
+    position: relative;
+    overflow: visible !important;
+}
+
+.repo-file-item {
+    position: relative;
+    overflow: visible !important;
+}
+
 @media (max-width: 768px) {
-    .repo-download-folder-inline {
-        padding: 3px 4px;
-        min-width: 28px;
-        height: 22px;
+    .repo-download-folder-wrapper {
         margin-right: 4px;
     }
     
-    .repo-download-folder-inline .menu {
-        position: fixed; /* На мобильных используем фиксированное позиционирование */
-        top: auto;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        width: 100%;
-        max-height: 50vh;
-        border-radius: 12px 12px 0 0;
-        margin-top: 0;
-        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+    .repo-download-folder-inline {
+        width: 24px;
+        height: 20px;
+        padding: 1px 3px !important;
     }
     
-    /* Затемнение фона на мобильных */
-    .repo-download-folder-inline:hover::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 999;
+    .repo-download-folder-inline svg {
+        width: 12px;
+        height: 12px;
     }
-}
-
-/* Для очень маленьких экранов */
-@media (max-width: 480px) {
-    .repo-download-folder-inline .menu {
-        max-height: 40vh;
+    
+    .repo-download-menu {
+        min-width: 120px;
+        font-size: 12px;
+    }
+    
+    .repo-download-menu .item {
+        padding: 5px 10px;
     }
 }
 </style>
